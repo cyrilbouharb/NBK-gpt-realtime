@@ -17,9 +17,9 @@ param(
 )
 
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "   Post-Deployment Configuration" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Change to project root directory
@@ -27,15 +27,15 @@ $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCom
 Set-Location $projectRoot
 
 # Step 1: Run NBK Website Scraper
-Write-Host "📚 Step 1/3: Scraping NBK website for knowledge base..." -ForegroundColor Yellow
+Write-Host "Step 1/3: Scraping NBK website for knowledge base..." -ForegroundColor Yellow
 Write-Host ""
 
 # Check if Python is available
 try {
     $pythonCmd = Get-Command python -ErrorAction Stop
-    Write-Host "   ✓ Python found: $($pythonCmd.Source)" -ForegroundColor Green
+    Write-Host "   Python found: $($pythonCmd.Source)" -ForegroundColor Green
 } catch {
-    Write-Host "   ✗ Python not found. Please install Python 3.11+" -ForegroundColor Red
+    Write-Host "   Python not found. Please install Python 3.11+" -ForegroundColor Red
     exit 1
 }
 
@@ -60,15 +60,15 @@ Write-Host "   Running scraper..." -ForegroundColor Yellow
 python scrape_nbk.py
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✓ NBK knowledge base updated successfully" -ForegroundColor Green
+    Write-Host "   NBK knowledge base updated successfully" -ForegroundColor Green
 } else {
-    Write-Host "   ⚠ Scraper completed with warnings (this is OK if some pages were unavailable)" -ForegroundColor Yellow
+    Write-Host "   Scraper completed with warnings (this is OK if some pages were unavailable)" -ForegroundColor Yellow
 }
 
 Write-Host ""
 
 # Step 2: Extract Deployment Outputs
-Write-Host "📋 Step 2/3: Extracting deployment configuration..." -ForegroundColor Yellow
+Write-Host "Step 2/3: Extracting deployment configuration..." -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -88,16 +88,16 @@ try {
     $resourceGroup = $envVars['RESOURCE_GROUP_NAME']
     $region = $envVars['DEPLOYMENT_REGION']
 
-    Write-Host "   ✓ Configuration extracted successfully" -ForegroundColor Green
+    Write-Host "   Configuration extracted successfully" -ForegroundColor Green
     Write-Host ""
 
     # Step 3: Display Frontend Configuration
-    Write-Host "🎉 Step 3/3: Deployment Complete!" -ForegroundColor Green
+    Write-Host "Step 3/3: Deployment Complete!" -ForegroundColor Green
     Write-Host ""
     Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Green
     Write-Host "   FRONTEND TEAM CONFIGURATION" -ForegroundColor Green -NoNewline
     Write-Host " 📱" -ForegroundColor White
-    Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "================================================================" -ForegroundColor Green
     Write-Host ""
     
     Write-Host "WebSocket Endpoint:" -ForegroundColor Cyan
@@ -108,44 +108,44 @@ try {
     Write-Host "  api-key: $subscriptionKey" -ForegroundColor White
     Write-Host ""
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host "----------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host ""
     
-    Write-Host "📊 Deployment Details:" -ForegroundColor Cyan
+    Write-Host "Deployment Details:" -ForegroundColor Cyan
     Write-Host "  Resource Group: $resourceGroup" -ForegroundColor White
     Write-Host "  Region: $region" -ForegroundColor White
     Write-Host "  API Version: $apiVersion" -ForegroundColor White
     Write-Host ""
     
-    Write-Host "✅ Features Configured:" -ForegroundColor Cyan
-    Write-Host "  ✓ Speech-to-Speech (bidirectional audio)" -ForegroundColor Green
-    Write-Host "  ✓ Arabic & English support" -ForegroundColor Green
-    Write-Host "  ✓ NBK knowledge base (web scraping)" -ForegroundColor Green
-    Write-Host "  ✓ Real-time interruption support" -ForegroundColor Green
-    Write-Host "  ✓ Professional 'echo' voice" -ForegroundColor Green
+    Write-Host "Features Configured:" -ForegroundColor Cyan
+    Write-Host "  - Speech-to-Speech (bidirectional audio)" -ForegroundColor Green
+    Write-Host "  - Arabic & English support" -ForegroundColor Green
+    Write-Host "  - NBK knowledge base (web scraping)" -ForegroundColor Green
+    Write-Host "  - Real-time interruption support" -ForegroundColor Green
+    Write-Host "  - Professional 'echo' voice" -ForegroundColor Green
     Write-Host ""
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host "----------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host ""
     
-    Write-Host "📖 Next Steps:" -ForegroundColor Yellow
+    Write-Host "Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Share the WebSocket URL and API key with your frontend team" -ForegroundColor White
     Write-Host "  2. See FRONTEND.md for integration examples" -ForegroundColor White
     Write-Host "  3. Run 'scripts/test-deployment.ps1' to validate the deployment" -ForegroundColor White
     Write-Host "  4. Run 'scripts/get-connection-info.ps1' anytime to view this info again" -ForegroundColor White
     Write-Host ""
     
-    Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "================================================================" -ForegroundColor Green
     Write-Host ""
 
     # Save to file for easy reference
     $configFile = "deployment-config.txt"
-    @"
+    $configContent = @"
 NBK Speech-to-Speech Deployment Configuration
 Generated: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 
 FRONTEND CONFIGURATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+================================================================
 
 WebSocket URL:
 $fullWebsocketUrl
@@ -154,10 +154,10 @@ API Key:
 $subscriptionKey
 
 Authentication:
-Add header: api-key: <YOUR_API_KEY>
+Add header: api-key: YOUR_API_KEY_HERE
 
 DEPLOYMENT DETAILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+================================================================
 
 Resource Group: $resourceGroup
 Region: $region
@@ -165,26 +165,28 @@ API Version: $apiVersion
 APIM Gateway: $gatewayUrl
 
 FEATURES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+================================================================
 
-✓ Speech-to-Speech (bidirectional audio)
-✓ Arabic & English support
-✓ NBK knowledge base (web scraping)
-✓ Real-time interruption support
-✓ Professional 'echo' voice
+- Speech-to-Speech (bidirectional audio)
+- Arabic & English support
+- NBK knowledge base (web scraping)
+- Real-time interruption support
+- Professional 'echo' voice
 
-For integration examples, see FRONTEND.md
-"@ | Out-File -FilePath $configFile -Encoding UTF8
+Integration examples: see FRONTEND.md
+"@
+    
+    $configContent | Out-File -FilePath $configFile -Encoding UTF8
 
-    Write-Host "💾 Configuration saved to: $configFile" -ForegroundColor Green
+    Write-Host "Configuration saved to: $configFile" -ForegroundColor Green
     Write-Host ""
 
 } catch {
-    Write-Host "   ⚠ Could not extract all configuration values" -ForegroundColor Yellow
+    Write-Host "   Could not extract all configuration values" -ForegroundColor Yellow
     Write-Host "   Error: $_" -ForegroundColor Red
     Write-Host "   You can retrieve configuration later using: scripts/get-connection-info.ps1" -ForegroundColor Yellow
     Write-Host ""
 }
 
-Write-Host "✨ Post-deployment configuration complete!" -ForegroundColor Green
+Write-Host "Post-deployment configuration complete!" -ForegroundColor Green
 Write-Host ""
