@@ -5,7 +5,6 @@ Based on realtime-mcp-agents.ipynb notebook
 import asyncio
 import base64
 import json
-import random
 import numpy as np
 import openai
 import pyaudio
@@ -44,9 +43,8 @@ class RealtimeNBKAgent:
     
     def get_session_config(self):
         """Get session configuration with NBK instructions."""
-        # Random voice selection like the notebook
-        voices = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']
-        voice = random.choice(voices)
+        # Use 'sage' voice - professional and trustworthy for banking
+        voice = 'sage'
         
         print(f"🎤 Selected voice: {voice}")
         
@@ -79,7 +77,8 @@ Use the above NBK information to answer customer questions accurately. Always ci
             "turn_detection": {
                 "threshold": 0.4,
                 "silence_duration_ms": 600,
-                "type": "server_vad"
+                "type": "server_vad",
+                "interrupt_response": True  # Enable automatic interruption on speech detection
             },
             "instructions": full_instructions,
             "voice": voice,
