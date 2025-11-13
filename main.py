@@ -43,8 +43,8 @@ class RealtimeNBKAgent:
     
     def get_session_config(self):
         """Get session configuration with NBK instructions."""
-        # Use 'sage' voice - professional and trustworthy for banking
-        voice = 'sage'
+        # Use 'echo' voice - deeper, professional, more natural for banking
+        voice = 'echo'
         
         print(f"🎤 Selected voice: {voice}")
         
@@ -75,7 +75,7 @@ Use the above NBK information to answer customer questions accurately. Always ci
                 "model": "whisper-1",
             },
             "turn_detection": {
-                "threshold": 0.4,
+                "threshold": 0.3,  # Lowered from 0.4 for more sensitive interruption detection
                 "silence_duration_ms": 600,
                 "type": "server_vad",
                 "interrupt_response": True  # Enable automatic interruption on speech detection
