@@ -119,7 +119,7 @@ try {
     
     Write-Host "Features Configured:" -ForegroundColor Cyan
     Write-Host "  - Speech-to-Speech (bidirectional audio)" -ForegroundColor Green
-    Write-Host "  - Arabic & English support" -ForegroundColor Green
+    Write-Host "  - Arabic and English support" -ForegroundColor Green
     Write-Host "  - NBK knowledge base (web scraping)" -ForegroundColor Green
     Write-Host "  - Real-time interruption support" -ForegroundColor Green
     Write-Host "  - Professional 'echo' voice" -ForegroundColor Green
@@ -140,41 +140,30 @@ try {
 
     # Save to file for easy reference
     $configFile = "deployment-config.txt"
-    $configContent = @"
-NBK Speech-to-Speech Deployment Configuration
-Generated: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-
-FRONTEND CONFIGURATION
-================================================================
-
-WebSocket URL:
-$fullWebsocketUrl
-
-API Key:
-$subscriptionKey
-
-Authentication:
-Add header: api-key: YOUR_API_KEY_HERE
-
-DEPLOYMENT DETAILS
-================================================================
-
-Resource Group: $resourceGroup
-Region: $region
-API Version: $apiVersion
-APIM Gateway: $gatewayUrl
-
-FEATURES
-================================================================
-
-- Speech-to-Speech (bidirectional audio)
-- Arabic & English support
-- NBK knowledge base (web scraping)
-- Real-time interruption support
-- Professional 'echo' voice
-
-Integration examples: see FRONTEND.md
-"@
+    $configContent = "NBK Speech-to-Speech Deployment Configuration`n"
+    $configContent += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`n"
+    $configContent += "FRONTEND CONFIGURATION`n"
+    $configContent += "================================================================`n`n"
+    $configContent += "WebSocket URL:`n"
+    $configContent += "$fullWebsocketUrl`n`n"
+    $configContent += "API Key:`n"
+    $configContent += "$subscriptionKey`n`n"
+    $configContent += "Authentication:`n"
+    $configContent += "Add header: api-key: YOUR_API_KEY_HERE`n`n"
+    $configContent += "DEPLOYMENT DETAILS`n"
+    $configContent += "================================================================`n`n"
+    $configContent += "Resource Group: $resourceGroup`n"
+    $configContent += "Region: $region`n"
+    $configContent += "API Version: $apiVersion`n"
+    $configContent += "APIM Gateway: $gatewayUrl`n`n"
+    $configContent += "FEATURES`n"
+    $configContent += "================================================================`n`n"
+    $configContent += "* Speech-to-Speech (bidirectional audio)`n"
+    $configContent += "* Arabic and English support`n"
+    $configContent += "* NBK knowledge base (web scraping)`n"
+    $configContent += "* Real-time interruption support`n"
+    $configContent += "* Professional 'echo' voice`n`n"
+    $configContent += "Integration examples: see FRONTEND.md`n"
     
     $configContent | Out-File -FilePath $configFile -Encoding UTF8
 
