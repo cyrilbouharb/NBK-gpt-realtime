@@ -1,0 +1,52 @@
+# NBK Realtime Customer Service Application Dependencies
+# Python 3.11+ required (tested with Python 3.13.7)
+
+# ============================================================================
+# CRITICAL VERSION CONSTRAINTS
+# ============================================================================
+# semantic-kernel 1.38.0 requires: openai>=1.98.0,<2
+# If you get "cannot import name 'omit' from 'openai._types'" error,
+# your openai version is too new (>=2.0) or incompatible
+# ============================================================================
+
+# Azure AI & Semantic Kernel
+semantic-kernel==1.38.0
+
+# OpenAI SDK (MUST be compatible with semantic-kernel)
+# Version range: >=1.98.0 (required by semantic-kernel) AND <2.0 (breaking changes)
+openai>=1.98.0,<2
+
+# Configuration & Type Safety
+pydantic==2.11.7
+pydantic-settings==2.12.0
+
+# CLI & User Interface
+rich==14.2.0
+
+# HTTP & API Communication
+requests>=2.31.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Numerical Computing (required by dependencies)
+numpy>=2.3.0
+
+# ============================================================================
+# AUTO-INSTALLED DEPENDENCIES (via semantic-kernel)
+# ============================================================================
+# The following packages are automatically installed as dependencies:
+# - aiohttp~=3.8 (async HTTP client)
+# - aiortc>=1.9.0 (WebRTC for Azure Realtime API)
+# - azure-ai-agents>=1.2.0b3 (Azure AI Services)
+# - azure-ai-projects>=1.0.0b12 (AI Foundry projects)
+# - azure-identity>=1.13 (authentication)
+# - opentelemetry-api~=1.24 (tracing)
+# - opentelemetry-sdk~=1.24 (tracing)
+# - websockets<16,>=13 (WebSocket connections)
+# - scipy>=1.15.1 (audio/signal processing)
+# - httpx (HTTP client for openai)
+# - typing-extensions (type hints)
+# - pydantic<3,>=1.9.0 (data validation)
+# ... and many more (~50+ packages total)
+# ============================================================================

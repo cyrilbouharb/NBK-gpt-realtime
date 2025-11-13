@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apimSku": {
+      "value": "Basicv2"
+    },
+    "aiServicesConfig": {
+      "value": [
+        {
+          "name": "foundry1",
+          "location": "swedencentral"
+        }
+      ]
+    },
+    "modelsConfig": {
+      "value": [
+        {
+          "name": "gpt-realtime",
+          "version": "2025-08-28",
+          "sku": "GlobalStandard",
+          "capacity": 10
+        }
+      ]
+    },
+    "apimSubscriptionsConfig": {
+      "value": [
+        {
+          "name": "subscription1",
+          "displayName": "Subscription 1"
+        }
+      ]
+    },
+    "inferenceAPIPath": {
+      "value": "inference"
+    },
+    "inferenceAPIType": {
+      "value": "websocket"
+    },
+    "foundryProjectName": {
+      "value": "s2s-realtime-nbk"
+    }
+  }
+}
