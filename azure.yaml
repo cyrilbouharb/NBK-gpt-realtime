@@ -9,5 +9,17 @@ infra:
   path: .
   module: main
 
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: ./infra/hooks/postprovision.ps1
+      continueOnError: false
+    posix:
+      shell: sh
+      run: |
+        echo "Post-provision hook not implemented for Linux/Mac yet"
+        echo "Please run: python scrape_nbk.py manually"
+
 # No services to deploy - this is infrastructure only
 # Python app runs locally and connects to deployed APIM

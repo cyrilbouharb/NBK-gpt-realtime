@@ -43,7 +43,7 @@ async def test_connection():
             "api-key": APIM_API_KEY
         }
         
-        async with websockets.connect(wss_url, extra_headers=headers) as ws:
+        async with websockets.connect(wss_url, additional_headers=headers) as ws:
             print("✅ WebSocket connected successfully!")
             
             # Send session configuration

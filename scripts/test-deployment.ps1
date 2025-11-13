@@ -148,7 +148,7 @@ Write-Host ""
 Write-Host "Connection Details:" -ForegroundColor White
 Write-Host "  WebSocket URL: $websocketUrl" -ForegroundColor Cyan
 Write-Host "  API Key: $($apimSubscriptionKey.Substring(0, 20))..." -ForegroundColor Cyan
-Write-Host "  Authentication: api-key: <YOUR_KEY>" -ForegroundColor Gray
+Write-Host "  Authentication: api-key: YOUR_KEY_HERE" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor White
 Write-Host "  1. Run: python examples\test-client.py" -ForegroundColor Yellow
