@@ -201,3 +201,13 @@ output logAnalyticsWorkspaceId string = lawModule.outputs.customerId
 output apimServiceId string = apimModule.outputs.id
 output apimResourceGatewayURL string = apimModule.outputs.gatewayUrl
 output apimSubscriptions array = apimModule.outputs.apimSubscriptions
+
+// Frontend Connection Information
+output APIM_GATEWAY_URL string = apimModule.outputs.gatewayUrl
+output APIM_SUBSCRIPTION_KEY string = apimModule.outputs.apimSubscriptions[0].key
+output APIM_SUBSCRIPTION_NAME string = apimModule.outputs.apimSubscriptions[0].displayName
+output WEBSOCKET_ENDPOINT string = 'wss://${replace(apimModule.outputs.gatewayUrl, 'https://', '')}/${inferenceAPIPath}/openai/realtime'
+output API_VERSION string = '2024-10-01-preview'
+output FULL_WEBSOCKET_URL string = 'wss://${replace(apimModule.outputs.gatewayUrl, 'https://', '')}/${inferenceAPIPath}/openai/realtime?api-version=2024-10-01-preview'
+output RESOURCE_GROUP_NAME string = resourceGroup().name
+output DEPLOYMENT_REGION string = resourceGroup().location

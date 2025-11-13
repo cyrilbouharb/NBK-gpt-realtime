@@ -1,96 +1,207 @@
-# Realtime NBK Application with Bing Custom Grounding
+# NBK Realtime Speech-to-Speech Assistant
 
-This application implements Azure OpenAI Realtime API with Bing custom grounding for the NBK (National Bank of Kuwait) domain. It provides an intelligent conversational agent that grounds its responses using live information from the NBK website.
+Real-time speech-to-speech AI assistant for National Bank of Kuwait, powered by Azure OpenAI Realtime API with web-scraped knowledge grounding.
 
 ## 🌟 Features
 
-- **Azure OpenAI Realtime API**: Real-time conversational AI with text and audio modalities
-- **Bing Custom Grounding**: Searches and grounds responses using information from the NBK domain
-- **Azure Infrastructure**: Automated deployment using Bicep templates
-- **APIM Integration**: API Management for secure and scalable API access
-- **AI Foundry**: Integrated AI services and model deployment
-- **Caching**: Intelligent caching of grounding results for improved performance
-- **Rich CLI**: Beautiful command-line interface with progress indicators
+- **Real-time Speech-to-Speech**: Bidirectional audio streaming with low latency
+- **Arabic Language Support**: Automatic detection and response in Arabic or English
+- **NBK Knowledge Base**: Grounded on National Bank of Kuwait website information (web-scraped)
+- **Voice Activity Detection**: Server-side VAD automatically detects user speech
+- **Echo Voice**: Professional, deeper tone suitable for banking applications
+- **Interruption Handling**: Configurable interruption support (experimental)
+- **APIM Gateway**: Secure two-layer authentication (subscription key + managed identity)
+- **Zero-Config Deployment**: Full automation with `azd up` - no manual configuration needed
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐
+│  Frontend App   │  (Web, Mobile, On-Prem)
+│  JavaScript/    │
+│  Python/C#      │
+└────────┬────────┘
+         │ WebSocket + api-key header
+         │
+         ▼
+┌─────────────────────────────────────────────────────┐
+│          Azure API Management (APIM)                │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ Subscription Key Authentication               │  │
+│  │ (Frontend → APIM)                             │  │
+│  └───────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ Managed Identity Authentication               │  │
+│  │ (APIM → Azure OpenAI)                         │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────┬───────────────────────────────────┘
+                  │ Automatic token generation
+                  │
+                  ▼
+          ┌───────────────────┐
+          │  Azure OpenAI     │
+          │  gpt-realtime     │
+          │  (Sweden Central) │
+          └───────────────────┘
+```
+
+### Authentication Layers
+
+1. **Frontend → APIM**: Subscription key authentication via `api-key` header
+   - Public endpoint accessible from anywhere (web, mobile, on-prem)
+   - Single API key shared with frontend teams
+
+2. **APIM → Azure OpenAI**: System-Assigned Managed Identity
+   - Automatic Azure AD token generation
+   - No credentials stored in code or configuration
+   - Policy: `authentication-managed-identity` with `https://cognitiveservices.azure.com` resource
+
+### Knowledge Grounding
+
+The assistant uses **web scraping** instead of Bing Search API (retiring August 2025) or Azure AI Search:
+
+1. **Scraper**: `scrape_nbk.py` uses BeautifulSoup to extract content from nbk.com
+2. **Storage**: Scraped content saved to `nbk_knowledge.json` (committed to repo)
+3. **Integration**: Knowledge loaded into system prompt at session start
+4. **Automation**: Post-deployment hook automatically runs scraper on fresh deployments
+
+**Why web scraping?**
+- Bing Search API retiring in August 2025
+- Azure AI Search requires complex setup (indexes, chunking, embeddings)
+- NBK website has public information suitable for scraping
+- Simple, maintainable, zero-config solution
 
 ## 📋 Prerequisites
 
-- **Azure Subscription**: Active Azure subscription with appropriate permissions
-- **Azure CLI**: Version 2.56.0 or higher ([Install](https://docs.microsoft.com/cli/azure/install-azure-cli))
-- **Python**: Version 3.11 or higher
-- **Bing Search API Key**: Get one from [Azure Cognitive Services](https://azure.microsoft.com/services/cognitive-services/bing-web-search-api/)
+- **Azure Subscription**: Active subscription with Contributor access
+- **Azure Developer CLI (azd)**: [Install here](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- **Python 3.11+**: For local testing (not required for frontend integration)
+- **PyAudio**: For microphone/speaker access (local testing only)
 - **Git**: For cloning the repository
 
-## 🚀 Quick Start
+## 🚀 Deployment
 
-### 1. Clone and Setup
+### One-Command Deployment
 
-```powershell
-# Clone or navigate to the project directory
-cd "c:\Users\cyrilbouharb\POCs\S2S Realtime NBK"
-
-# Create a virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-.\venv\Scripts\Activate.ps1
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install Azure Developer CLI (azd)
-winget install microsoft.azd
-```
-
-### 2. Configure Environment
-
-Create a `.env` file from the example:
+This project is designed for **zero-configuration deployment** on customer tenants:
 
 ```powershell
-Copy-Item .env.example .env
-```
+# 1. Clone repository
+git clone <repo-url>
+cd "S2S Realtime NBK"
 
-Edit the `.env` file and update the following required values:
+# 2. Login to Azure
+azd auth login
 
-```ini
-# Required: Your Bing Search API key
-BING_API_KEY=your-bing-api-key-here
-
-# Optional: Customize these settings
-NBK_DOMAIN=nbk.com
-```
-
-### 3. Deploy Azure Infrastructure
-
-```powershell
-# Login to Azure
-az login
-
-# Deploy using Azure Developer CLI
+# 3. Deploy everything (infrastructure + scraper + configuration)
 azd up
 ```
 
-This will:
-- Create the resource group: `lab-s2s-realtime-nbk` in `uksouth`
-- Deploy API Management (Basicv2 SKU)
-- Deploy AI Foundry with AI Services
-- Deploy the `gpt-4o-realtime-preview` model automatically
-- Configure Application Insights and Log Analytics
-- Set up WebSocket API with authentication
+### What Happens During Deployment
 
-### 4. Update .env with Deployment Outputs
+1. **Infrastructure Deployment** (via Bicep):
+   - Azure API Management (APIM) with subscription key
+   - Azure OpenAI with gpt-realtime model (Sweden Central)
+   - Application Insights for monitoring
+   - Log Analytics workspace
+   - System-Assigned Managed Identity for APIM
+   - Role assignment: APIM → Azure OpenAI (Cognitive Services User)
 
-After deployment, `azd` will display the outputs. Update your `.env` file:
+2. **Post-Deployment Automation** (via `infra/hooks/postprovision.ps1`):
+   - Creates Python virtual environment
+   - Installs requirements from `requirements.txt`
+   - Runs `scrape_nbk.py` to fetch NBK knowledge base
+   - Extracts azd outputs (WebSocket URL, API key, etc.)
+   - Displays formatted connection information
+   - Saves `deployment-config.txt` for frontend team
 
-```ini
-APIM_GATEWAY_URL=<from azd output>
-APIM_API_KEY=<from azd output>
-LOG_ANALYTICS_WORKSPACE_ID=<from azd output>
-```
+3. **Output** (displayed in terminal):
+   ```
+   ========================================
+   NBK Realtime API - Deployment Complete
+   ========================================
 
-### 5. Run the Application
+   WebSocket URL:
+     wss://apim-xxxxx.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview
+
+   API Key (Subscription):
+     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+   Authentication Header:
+     api-key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+   Deployment Details:
+     Resource Group: rg-xxxxx
+     Region: uksouth
+     API Version: 2024-10-01-preview
+   ```
+
+### Frontend Integration
+
+After deployment, share the following with your frontend team:
+
+1. **Connection Details**: See `deployment-config.txt` or run `.\scripts\get-connection-info.ps1`
+2. **Integration Guide**: See `FRONTEND.md` for code examples in JavaScript, Python, and C#
+3. **Test Client**: Run `python examples\test-client.py` to validate the backend
+
+**No additional configuration needed!** Frontend teams can start integrating immediately.
+
+## 🧪 Testing
+
+### Validate Deployment
 
 ```powershell
+# Run validation script
+.\scripts\test-deployment.ps1
+
+# Or with verbose output
+.\scripts\test-deployment.ps1 -Verbose
+```
+
+### Test WebSocket Connection
+
+```powershell
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Run test client
+python examples\test-client.py
+```
+
+### Run Full Application (Local)
+
+```powershell
+# Install PyAudio for microphone/speaker access
+pip install pyaudio
+
+# Run main application
 python main.py
+```
+
+## 📁 Project Structure
+
+```
+S2S Realtime NBK/
+├── examples/
+│   └── test-client.py          # WebSocket connection test
+├── infra/
+│   └── hooks/
+│       └── postprovision.ps1   # Post-deployment automation
+├── modules/                     # Bicep infrastructure modules
+│   ├── apim.bicep              # API Management configuration
+│   ├── foundry.bicep           # Azure OpenAI deployment
+│   └── ...
+├── scripts/
+│   ├── get-connection-info.ps1 # Display connection details
+│   └── test-deployment.ps1     # Validate deployment
+├── main.py                      # Local speech-to-speech client
+├── scrape_nbk.py               # Web scraper for NBK knowledge
+├── config.py                   # Configuration and instructions
+├── nbk_knowledge.json          # Scraped NBK website content
+├── main.bicep                  # Main infrastructure template
+├── main.parameters.json        # Deployment parameters
+├── FRONTEND.md                 # Frontend integration guide
+└── README.md                   # This file
 ```
 
 ## 📁 Project Structure
@@ -137,294 +248,279 @@ Configure how the application searches and grounds information:
 NBK_DOMAIN=nbk.com
 NBK_SITE_FILTER=site:nbk.com
 
-# Number of search results to use for grounding
-MAX_GROUNDING_RESULTS=5
+## 🔧 Configuration
 
-# Freshness of search results (Day, Week, Month)
-GROUNDING_FRESHNESS=Month
-```
+### Environment Variables
 
-### Realtime API Settings
-
-Customize the voice and behavior:
+The application uses these environment variables (auto-configured by `azd up`):
 
 ```ini
-# Audio sample rate
-SAMPLE_RATE=24000
+# APIM Connection (auto-populated by deployment)
+APIM_GATEWAY_URL=https://apim-xxxxx.azure-api.net
+APIM_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+INFERENCE_API_PATH=inference
+INFERENCE_API_VERSION=2024-10-01-preview
 
-# Default voice (alloy, ash, ballad, coral, echo, sage, shimmer, verse)
-DEFAULT_VOICE=alloy
-
-# Voice activity detection settings
-TURN_DETECTION_THRESHOLD=0.4
-TURN_DETECTION_SILENCE_MS=600
+# Not used (Bing Search API retiring August 2025)
+# BING_API_KEY=
 ```
 
-## 💡 Usage Examples
+### Session Configuration
 
-### Interactive Chat Mode
+Customize voice and behavior in `main.py` or `config.py`:
 
-When you run `python main.py`, you'll be prompted to:
-
-1. **Choose deployment option**:
-   - Deploy new infrastructure (first time)
-   - Use existing resources (subsequent runs)
-
-2. **Ask questions about NBK**:
-   ```
-   🗣️  You: What are the current interest rates at NBK?
-   🗣️  You: Tell me about NBK's digital banking services
-   🗣️  You: What are the requirements to open an account at NBK?
-   ```
-
-3. **Exit**: Type `quit`, `exit`, or press `Ctrl+C`
-
-### Example Session
-
-```
-================================================================================
-CONFIGURATION
-================================================================================
-
-Azure Settings:
-  Resource Group: lab-s2s-realtime-nbk
-  Location: uksouth
-  Deployment: s2s-realtime-nbk
-  APIM SKU: Basicv2
-
-Bing Grounding Settings:
-  NBK Domain: nbk.com
-  Site Filter: site:nbk.com
-  Max Results: 5
-
-Realtime API Settings:
-  Sample Rate: 24000 Hz
-  Default Voice: alloy
-  Modalities: text, audio
-================================================================================
-
-╭─────────────────────────────────────────╮
-│ Verifying Azure CLI                     │
-╰─────────────────────────────────────────╯
-
-✅ Azure CLI verified
-ℹ️  User: user@example.com
-ℹ️  Subscription: My Subscription
-ℹ️  Tenant ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-
-╭─────────────────────────────────────────╮
-│ NBK Realtime Chat with Bing Grounding  │
-╰─────────────────────────────────────────╯
-
-ℹ️  Ask questions about NBK (National Bank of Kuwait)
-ℹ️  Type 'quit' or 'exit' to end the session
-
-🗣️  You: What services does NBK offer for businesses?
-
-ℹ️  Searching NBK domain for: What services does NBK offer for businesses?
-✅ Found 5 relevant results from NBK
-
-╭─────────────────────────────────────────╮
-│ Response:                                │
-╰─────────────────────────────────────────╯
-
-Based on information from NBK's official website, NBK offers a comprehensive range 
-of business banking services including:
-
-1. Business Accounts: Various account types tailored for different business sizes
-2. Corporate Loans: Financing solutions for business expansion and operations
-3. Trade Finance: Letters of credit, guarantees, and trade services
-4. Cash Management: Treasury and cash management solutions
-5. Payment Solutions: Corporate cards and digital payment platforms
-
-Source: nbk.com/business-banking
+```python
+session_config = {
+    "modalities": ["audio", "text"],  # Required: both modalities
+    "voice": "echo",                   # Professional banking voice
+    "input_audio_format": "pcm16",
+    "output_audio_format": "pcm16",
+    "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.2,              # Lower = more sensitive
+        "silence_duration_ms": 600,
+        "prefix_padding_ms": 100
+    }
+}
 ```
 
-## 🏗️ Architecture
+### Knowledge Base
 
-### High-Level Architecture
+The `nbk_knowledge.json` file contains scraped content from:
+- nbk.com/personal (Personal Banking)
+- nbk.com/business (Business Banking)
+- nbk.com/contact (Contact Information)
 
-```
-┌─────────────┐
-│   User      │
-└──────┬──────┘
-       │
-       v
-┌─────────────────────────────────┐
-│   Python Application            │
-│   ┌─────────────────────────┐   │
-│   │  Main Application       │   │
-│   │  - Chat Interface       │   │
-│   │  - Query Processing     │   │
-│   └───────┬─────────────────┘   │
-│           │                     │
-│   ┌───────v──────┐  ┌────────v──────┐
-│   │ Bing Search  │  │ Azure OpenAI  │
-│   │ (Grounding)  │  │ Realtime API  │
-│   └──────────────┘  └───────────────┘
-└─────────────────────────────────┘
-       │                   │
-       v                   v
-┌──────────────┐    ┌─────────────────┐
-│ Bing Search  │    │  Azure APIM     │
-│   API        │    │  ┌───────────┐  │
-└──────────────┘    │  │ Realtime  │  │
-                    │  │ Endpoint  │  │
-                    │  └───────────┘  │
-                    └─────────────────┘
-                           │
-                           v
-                    ┌─────────────────┐
-                    │  AI Foundry     │
-                    │  (GPT Realtime) │
-                    └─────────────────┘
+To update the knowledge base:
+
+```powershell
+python scrape_nbk.py
 ```
 
-### Key Components
+## 💡 Usage
 
-1. **Main Application (`main.py`)**
-   - Orchestrates the entire application flow
-   - Manages user interactions
-   - Coordinates between Bing grounding and Realtime API
+### Run Locally with Microphone/Speaker
 
-2. **Configuration (`config.py`)**
-   - Centralized configuration management
-   - Environment variable handling
-   - Pydantic-based validation
+```powershell
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
 
-3. **Utils (`utils.py`)**
-   - Azure CLI command execution
-   - Bing search integration
-   - Deployment management
-   - Rich console output
+# Run main application
+python main.py
+```
 
-4. **Bicep Templates (`main.bicep` + modules)**
-   - Infrastructure as Code
-   - Automated Azure resource deployment
-   - APIM policy configuration
+The application will:
+1. List available audio devices
+2. Prompt you to select microphone and speaker
+3. Connect to the Realtime API
+4. Enable voice conversation with NBK assistant
+
+### Test Connection Without Audio
+
+```powershell
+python examples\test-client.py
+```
+
+This validates:
+- WebSocket connectivity
+- Authentication
+- Session configuration
+- Text and audio streaming
+
+### Display Connection Info
+
+```powershell
+# Display in terminal
+.\scripts\get-connection-info.ps1
+
+# Copy to clipboard
+.\scripts\get-connection-info.ps1 -CopyToClipboard
+
+# Save to file
+.\scripts\get-connection-info.ps1 -SaveToFile
+```
 
 ## 🔐 Security
 
-### API Keys
+### Authentication
 
-- Never commit `.env` file to version control
-- Store API keys securely
-- Use Azure Key Vault for production deployments
+**Two-layer authentication model:**
 
-### APIM Policies
+1. **Frontend → APIM** (Public)
+   - Subscription key via `api-key` header
+   - Accessible from anywhere (web, mobile, on-prem)
+   - Single key shared with frontend teams
 
-The application uses APIM for:
-- API key management
-- Rate limiting
-- Request/response logging
-- Security policies
+2. **APIM → Azure OpenAI** (Backend)
+   - System-Assigned Managed Identity
+   - Automatic Azure AD token generation
+   - No credentials stored or managed manually
 
-### Network Security
+### Best Practices
 
-- APIM provides a secure gateway
-- All traffic encrypted with TLS
-- Optional: Configure VNet integration for private endpoints
+- **Never commit `.env`** with API keys to version control (already in `.gitignore`)
+- **Rotate subscription keys** periodically via APIM portal
+- **Monitor usage** via Application Insights
+- **Use Azure Key Vault** for production secrets (optional enhancement)
+
+### APIM Policy
+
+The deployed policy (`policy.xml`):
+
+```xml
+<policies>
+  <inbound>
+    <base />
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+  </inbound>
+</policies>
+```
+
+This automatically authenticates APIM to Azure OpenAI using its managed identity.
 
 ## 📊 Monitoring
 
 ### Application Insights
 
-Monitor your application with:
+View real-time metrics:
 
 ```powershell
-# View logs in Azure Portal
+# Get Application Insights name
+azd env get-values | Select-String "APPLICATION_INSIGHTS"
+
+# Open in portal
 az monitor app-insights component show \
-  --resource-group lab-s2s-realtime-nbk \
+  --resource-group <resource-group-name> \
   --app <app-insights-name>
 ```
 
 ### Log Analytics
 
-Query logs using KQL:
+Query logs using KQL in Azure Portal:
 
 ```kql
-// Model usage statistics
-model_usage
-
-// Prompts and completions
-prompts_and_completions
-
-// API Management logs
+// Recent API requests
 ApiManagementGatewayLogs
+| where TimeGenerated > ago(1h)
+| project TimeGenerated, ApiId, Method, Url, ResponseCode
+
+// Model usage
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
 | where TimeGenerated > ago(1h)
 ```
 
-## 🔧 Troubleshooting
+## 🛠️ Troubleshooting
 
-### Common Issues
+### Deployment Issues
 
-1. **"Azure CLI not found or not logged in"**
-   ```powershell
-   az login
-   az account show
-   ```
-
-2. **"Bing API key not set"**
-   - Ensure `BING_API_KEY` is set in `.env`
-   - Get a key from [Azure Portal](https://portal.azure.com)
-
-3. **"Deployment failed"**
-   - Check Azure permissions
-   - Verify resource quotas
-   - Review error messages in Azure Portal
-
-4. **"No results found from NBK domain"**
-   - Verify Bing API key is valid
-   - Check NBK_SITE_FILTER configuration
-   - Try a different query
-
-5. **Module import errors**
-   - Ensure virtual environment is activated
-   - Reinstall dependencies: `pip install -r requirements.txt`
-
-### Viewing Deployment Status
-
+**Problem**: `azd up` fails with resource already exists
 ```powershell
-# Check deployment status
+# Solution: Delete existing deployment and retry
+azd down
+azd up
+```
+
+**Problem**: Bicep deployment timeout
+```powershell
+# Solution: Check Azure Portal for deployment status
 az deployment group show \
-  --name s2s-realtime-nbk \
-  --resource-group lab-s2s-realtime-nbk
-
-# View deployment operations
-az deployment group operation list \
-  --name s2s-realtime-nbk \
-  --resource-group lab-s2s-realtime-nbk
+  --resource-group <rg-name> \
+  --name <deployment-name>
 ```
 
-## 🧹 Cleanup
+### Connection Issues
 
-To remove all deployed resources:
+**Problem**: WebSocket connection fails with 401
+```
+# Solution: Verify API key is correct
+azd env get-values | Select-String "APIM_SUBSCRIPTION_KEY"
+```
+
+**Problem**: WebSocket connection fails with timeout
+```
+# Solution: Check APIM endpoint is accessible
+Test-NetConnection -ComputerName apim-xxxxx.azure-api.net -Port 443
+```
+
+### Audio Issues
+
+**Problem**: No audio devices listed
+```
+# Solution: Install PyAudio
+pip install pyaudio
+
+# On Windows, you may need to install from wheel:
+pip install pipwin
+pipwin install pyaudio
+```
+
+**Problem**: Audio choppy or delayed
+```
+# Solution: Adjust chunk size in main.py
+CHUNK_SIZE = 480  # 20ms at 24kHz (default)
+CHUNK_SIZE = 240  # 10ms - try smaller chunks
+```
+
+### Knowledge Base Issues
+
+**Problem**: NBK knowledge not up to date
+```powershell
+# Solution: Re-run scraper
+python scrape_nbk.py
+```
+
+**Problem**: Scraper fails to fetch pages
+```
+# Solution: Check network connectivity and NBK website status
+# The scraper handles failures gracefully but logs errors
+```
+
+## 📚 Additional Resources
+
+- [Azure OpenAI Realtime API Documentation](https://learn.microsoft.com/azure/ai-services/openai/realtime-audio)
+- [APIM Managed Identity Authentication](https://learn.microsoft.com/azure/api-management/api-management-authentication-policies)
+- [Frontend Integration Guide](./FRONTEND.md)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/)
+
+## 🤝 Support
+
+For questions or issues:
+
+1. Run validation: `.\scripts\test-deployment.ps1`
+2. Review logs in Application Insights
+3. Check frontend integration guide: `FRONTEND.md`
+4. Contact deployment team
+
+## 📄 License
+
+Internal use only - National Bank of Kuwait
+
+---
+
+**Quick Reference:**
 
 ```powershell
-# Delete the resource group and all resources
-az group delete --name lab-s2s-realtime-nbk --yes --no-wait
-```
+# Deploy everything
+azd up
 
-## 📝 Development
+# Get connection info
+.\scripts\get-connection-info.ps1
 
-### Adding Custom Domains
+# Validate deployment
+.\scripts\test-deployment.ps1
 
-To ground on multiple domains:
+# Test connection
+python examples\test-client.py
 
-```python
-# In config.py, modify BingGroundingConfig
-nbk_site_filter: str = Field(
-    "(site:nbk.com OR site:nbk.com.kw)",
-    alias="NBK_SITE_FILTER"
-)
-```
+# Run locally with audio
+python main.py
 
-### Customizing Voice
+# Update knowledge base
+python scrape_nbk.py
 
-Change the default voice in `.env`:
-
-```ini
-DEFAULT_VOICE=shimmer  # or alloy, ash, ballad, coral, echo, sage, verse
+# Clean up
+azd down
 ```
 
 ### Adding Audio Mode
