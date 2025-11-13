@@ -75,7 +75,7 @@ Use the above NBK information to answer customer questions accurately. Always ci
                 "model": "whisper-1",
             },
             "turn_detection": {
-                "threshold": 0.3,  # Lowered from 0.4 for more sensitive interruption detection
+                "threshold": 0.2,  # Lowered from 0.3 for much more sensitive interruption detection
                 "silence_duration_ms": 600,
                 "type": "server_vad",
                 "interrupt_response": True  # Enable automatic interruption on speech detection
