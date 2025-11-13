@@ -174,7 +174,8 @@ try {
 } catch {
     Write-Host "   Could not extract all configuration values" -ForegroundColor Yellow
     Write-Host "   Error: $_" -ForegroundColor Red
-    Write-Host "   You can retrieve configuration later using: scripts/get-connection-info.ps1" -ForegroundColor Yellow
+    $infoScript = "scripts/get-connection-info.ps1"
+    Write-Host "   You can retrieve configuration later using: $infoScript" -ForegroundColor Yellow
     Write-Host ""
 }
 
