@@ -156,5 +156,6 @@ Write-Host "  2. Share deployment-config.txt with frontend team" -ForegroundColo
 Write-Host "  3. See FRONTEND.md for integration examples" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "To view deployment info anytime:" -ForegroundColor White
-Write-Host "  .\scripts\get-connection-info.ps1" -ForegroundColor Cyan
+$scriptPath = ".\scripts\get-connection-info.ps1"
+Write-Host "  $scriptPath" -ForegroundColor Cyan
 Write-Host ""
