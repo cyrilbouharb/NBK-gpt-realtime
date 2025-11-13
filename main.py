@@ -171,15 +171,25 @@ Use the above NBK information to answer customer questions accurately. Always ci
                             print(f"Audio send error: {e}")
                             break
                 
+                # Track if response is active
+                response_active = False
+                
                 async def receive_events():
                     """Receive and handle events from API."""
+                    nonlocal response_active
+                    
                     async for event in conn:
                         # Handle different event types
-                        if event.type == "input_audio_buffer.speech_started":
+                        if event.type == "response.created":
+                            # Mark response as active when it starts
+                            response_active = True
+                        
+                        elif event.type == "input_audio_buffer.speech_started":
                             print("\n🗣️  Speech detected...")
-                            # Cancel any ongoing response when user starts speaking (interruption)
-                            print("⏸️  Interrupting assistant...")
-                            await conn.response.cancel()
+                            # Only cancel if there's an active response
+                            if response_active:
+                                print("⏸️  Interrupting assistant...")
+                                await conn.response.cancel()
                         
                         elif event.type == "conversation.item.input_audio_transcription.completed":
                             print(f"👤 You: {event.transcript}")
@@ -201,12 +211,15 @@ Use the above NBK information to answer customer questions accurately. Always ci
                         
                         elif event.type == "response.done":
                             print("\n✅ Response complete\n")
+                            response_active = False  # Response finished
                         
                         elif event.type == "response.cancelled":
                             print("\n🚫 Response cancelled (interrupted)\n")
+                            response_active = False  # Response cancelled
                         
                         elif event.type == "error":
                             print(f"\n❌ Error: {event}")
+                            response_active = False  # Reset on error
                 
                 # Run both tasks concurrently
                 await asyncio.gather(
