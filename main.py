@@ -10,6 +10,7 @@ import numpy as np
 import openai
 import pyaudio
 from config import get_config
+from scrape_nbk import load_nbk_knowledge, format_knowledge_for_prompt
 
 
 # Audio configuration
@@ -52,6 +53,24 @@ class RealtimeNBKAgent:
         # Get deployment name
         deployment_name = self.config.azure.models_config[0]['name']
         
+        # Load NBK knowledge base and add to instructions
+        print("📚 Loading NBK knowledge base...")
+        nbk_knowledge = load_nbk_knowledge()
+        
+        if nbk_knowledge:
+            # Format knowledge for prompt
+            knowledge_text = format_knowledge_for_prompt(nbk_knowledge, max_chars=6000)
+            # Combine base instructions with knowledge
+            full_instructions = f"""{self.config.bing_grounding.grounding_instructions}
+
+{knowledge_text}
+
+Use the above NBK information to answer customer questions accurately. Always cite the source when using this information."""
+            print(f"✅ Loaded {len(nbk_knowledge)} pages of NBK information")
+        else:
+            print("⚠️  No NBK knowledge base found. Using base instructions only.")
+            full_instructions = self.config.bing_grounding.grounding_instructions
+        
         # Session config following notebook pattern
         session_config = {
             "input_audio_transcription": {
@@ -62,7 +81,7 @@ class RealtimeNBKAgent:
                 "silence_duration_ms": 600,
                 "type": "server_vad"
             },
-            "instructions": self.config.bing_grounding.grounding_instructions,
+            "instructions": full_instructions,
             "voice": voice,
             "modalities": ["audio", "text"],
             "tools": []
@@ -158,6 +177,9 @@ class RealtimeNBKAgent:
                         # Handle different event types
                         if event.type == "input_audio_buffer.speech_started":
                             print("\n🗣️  Speech detected...")
+                            # Cancel any ongoing response when user starts speaking (interruption)
+                            print("⏸️  Interrupting assistant...")
+                            await conn.response.cancel()
                         
                         elif event.type == "conversation.item.input_audio_transcription.completed":
                             print(f"👤 You: {event.transcript}")
@@ -179,6 +201,9 @@ class RealtimeNBKAgent:
                         
                         elif event.type == "response.done":
                             print("\n✅ Response complete\n")
+                        
+                        elif event.type == "response.cancelled":
+                            print("\n🚫 Response cancelled (interrupted)\n")
                         
                         elif event.type == "error":
                             print(f"\n❌ Error: {event}")
