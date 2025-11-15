@@ -344,29 +344,42 @@ curl https://<APIM_GATEWAY_URL>/inference/openai/realtime?api-key=<KEY>
 
 ## Manual Deployment (Without azd)
 
-If `azd` fails, you can deploy manually:
+If `azd` fails or you don't have Docker Desktop installed, you can deploy manually using **ACR Cloud Build** (no local Docker needed):
 
 ### 1. Deploy Infrastructure
 ```bash
+# Login to Azure
+az login
+
+# Create resource group
+az group create --name <your-rg> --location swedencentral
+
+# Deploy Bicep template
 az deployment group create \
   --resource-group <your-rg> \
   --template-file main.bicep \
-  --parameters @main.parameters.json
+  --parameters @main.parameters.json \
+  --parameters environmentName=<your-env-name>
 ```
 
-### 2. Build and Push Docker Image
+### 2. Build Docker Image in Azure (No local Docker needed!)
+
 ```bash
 # Get registry name from deployment outputs
 ACR_NAME=$(az deployment group show -g <your-rg> -n main --query properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value -o tsv)
 
-# Login to ACR
-az acr login --name $ACR_NAME
-
-# Build and push
-docker buildx build --platform linux/amd64 \
-  -t ${ACR_NAME}.azurecr.io/nbk-backend:latest \
-  --push .
+# Build image directly in ACR (cloud build)
+az acr build --registry $ACR_NAME \
+  --image nbk-backend:latest \
+  --platform linux/amd64 \
+  --file Dockerfile \
+  .
 ```
+
+**Why this works without local Docker:**
+- ACR (Azure Container Registry) has built-in cloud build capability
+- The image is built in Azure, not on your laptop
+- Perfect for machines without Docker Desktop installed
 
 ### 3. Update Container App
 ```bash
@@ -376,6 +389,17 @@ az containerapp update \
   --name $CONTAINER_APP_NAME \
   --resource-group <your-rg> \
   --image ${ACR_NAME}.azurecr.io/nbk-backend:latest
+```
+
+### Alternative: Use Docker Locally (if Docker Desktop is installed)
+```bash
+# Login to ACR
+az acr login --name $ACR_NAME
+
+# Build and push from your laptop
+docker buildx build --platform linux/amd64 \
+  -t ${ACR_NAME}.azurecr.io/nbk-backend:latest \
+  --push .
 ```
 
 ## Cleanup
