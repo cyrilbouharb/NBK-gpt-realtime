@@ -141,8 +141,15 @@ The NBK knowledge is stored in `nbk_knowledge.json`. To update it:
    ```
 3. Redeploy the backend:
    ```bash
+   # Option A: Use Docker (recommended - azd deploy has known bugs)
+   docker buildx build --platform linux/amd64 -t <ACR_NAME>.azurecr.io/backend:latest --push .
+   az containerapp update --name <CONTAINER_APP_NAME> --resource-group <RG> --image <ACR_NAME>.azurecr.io/backend:latest
+
+   # Option B: Try azd deploy (may fail with "containerAppName cannot be empty")
    azd deploy backend
    ```
+
+**Note**: `azd deploy` currently has a bug where it may fail. Use the Docker commands above as a workaround.
 
 ### Adjusting Voice Activity Detection (VAD) Settings
 
