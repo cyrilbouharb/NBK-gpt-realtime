@@ -1,350 +1,697 @@
-# NBK Realtime Voice Assistant# NBK Realtime Speech-to-Speech Assistant
+# NBK Realtime Speech-to-Speech Assistant# NBK Realtime Voice Assistant# NBK Realtime Speech-to-Speech Assistant
 
 
 
-A production-ready speech-to-speech voice assistant for National Bank of Kuwait (NBK) powered by Azure OpenAI Realtime API with automatic knowledge injection.Real-time speech-to-speech AI assistant for National Bank of Kuwait, powered by Azure OpenAI Realtime API with web-scraped knowledge grounding.
+Real-time speech-to-speech AI assistant for National Bank of Kuwait, powered by Azure OpenAI Realtime API with web-scraped knowledge grounding.
 
 
 
-## Overview## 🌟 Features
+## 🌟 FeaturesA production-ready speech-to-speech voice assistant for National Bank of Kuwait (NBK) powered by Azure OpenAI Realtime API with automatic knowledge injection.Real-time speech-to-speech AI assistant for National Bank of Kuwait, powered by Azure OpenAI Realtime API with web-scraped knowledge grounding.
 
 
 
-This solution provides a fully-managed voice assistant that:- **Real-time Speech-to-Speech**: Bidirectional audio streaming with low latency
+- **Real-time Speech-to-Speech**: Bidirectional audio streaming with low latency
 
-- ✅ Responds in natural speech using Azure OpenAI GPT-4o Realtime model- **Arabic Language Support**: Automatic detection and response in Arabic or English
+- **Arabic Language Support**: Automatic detection and response in Arabic or English
 
-- ✅ Automatically injects NBK knowledge base into every conversation- **NBK Knowledge Base**: Grounded on National Bank of Kuwait website information (web-scraped)
+- **NBK Knowledge Base**: Grounded on National Bank of Kuwait website information (web-scraped)## Overview## 🌟 Features
 
-- ✅ Supports voice interruption (barge-in) during AI responses- **Voice Activity Detection**: Server-side VAD automatically detects user speech
+- **Voice Activity Detection**: Server-side VAD automatically detects user speech
 
-- ✅ Uses server-side Voice Activity Detection (VAD) for natural conversations- **Echo Voice**: Professional, deeper tone suitable for banking applications
+- **Echo Voice**: Professional, deeper tone suitable for banking applications
 
-- ✅ Secured with Azure API Management subscription key authentication- **Interruption Handling**: Configurable interruption support (experimental)
+- **Interruption Handling**: Configurable interruption support
 
-- ✅ Scales automatically based on demand (Azure Container Apps)- **APIM Gateway**: Secure two-layer authentication (subscription key + managed identity)
+- **APIM Gateway**: Secure two-layer authentication (subscription key + managed identity)This solution provides a fully-managed voice assistant that:- **Real-time Speech-to-Speech**: Bidirectional audio streaming with low latency
 
-- ✅ Provides professional male voice (Echo) optimized for banking- **Zero-Config Deployment**: Full automation with `azd up` - no manual configuration needed
+- **Zero-Config Deployment**: Full automation with `azd up` - no manual configuration needed
 
-
-
-## Architecture## 🏗️ Architecture
+- **Remote Docker Build**: Builds in Azure - no local Docker installation required- ✅ Responds in natural speech using Azure OpenAI GPT-4o Realtime model- **Arabic Language Support**: Automatic detection and response in Arabic or English
 
 
 
-``````
+## 🏗️ Architecture- ✅ Automatically injects NBK knowledge base into every conversation- **NBK Knowledge Base**: Grounded on National Bank of Kuwait website information (web-scraped)
 
-Frontend (Browser/Mobile App)┌─────────────────┐
 
-    ↓ WebSocket (wss://)│  Frontend App   │  (Web, Mobile, On-Prem)
 
-Azure API Management (Subscription Key Auth)│  JavaScript/    │
+```- ✅ Supports voice interruption (barge-in) during AI responses- **Voice Activity Detection**: Server-side VAD automatically detects user speech
 
-    ↓│  Python/C#      │
+┌─────────────────┐
 
-Backend Container App (FastAPI WebSocket Proxy)└────────┬────────┘
+│  Frontend App   │  (Web, Mobile, On-Prem)- ✅ Uses server-side Voice Activity Detection (VAD) for natural conversations- **Echo Voice**: Professional, deeper tone suitable for banking applications
 
-    ├─ Loads nbk_knowledge.json (3 KB entries)         │ WebSocket + api-key header
+│  JavaScript/    │
 
-    ├─ Injects system prompt with NBK info         │
+│  Python/C#      │- ✅ Secured with Azure API Management subscription key authentication- **Interruption Handling**: Configurable interruption support (experimental)
 
-    ├─ Configures Echo voice & VAD settings         ▼
+└────────┬────────┘
 
-    └─ Proxies to Azure OpenAI Realtime API┌─────────────────────────────────────────────────────┐
+         │ WebSocket + api-key header- ✅ Scales automatically based on demand (Azure Container Apps)- **APIM Gateway**: Secure two-layer authentication (subscription key + managed identity)
 
-```│          Azure API Management (APIM)                │
+         │
+
+         ▼- ✅ Provides professional male voice (Echo) optimized for banking- **Zero-Config Deployment**: Full automation with `azd up` - no manual configuration needed
+
+┌─────────────────────────────────────────────────────┐
+
+│          Azure API Management (APIM)                │
 
 │  ┌───────────────────────────────────────────────┐  │
 
-### Key Components│  │ Subscription Key Authentication               │  │
+│  │ Subscription Key Authentication               │  │## Architecture## 🏗️ Architecture
 
 │  │ (Frontend → APIM)                             │  │
 
-- **Backend**: Python FastAPI WebSocket proxy (`backend/main.py`)│  └───────────────────────────────────────────────┘  │
-
-- **Infrastructure**: Bicep templates for Azure resources (`main.bicep`, `modules/`)│  ┌───────────────────────────────────────────────┐  │
-
-- **Knowledge Base**: Scraped NBK website content (`nbk_knowledge.json`)│  │ Managed Identity Authentication               │  │
-
-- **Frontend Example**: Browser-based test interface (`test-frontend-vad.html`)│  │ (APIM → Azure OpenAI)                         │  │
-
 │  └───────────────────────────────────────────────┘  │
 
-## Quick Start└─────────────────┬───────────────────────────────────┘
+│  ┌───────────────────────────────────────────────┐  │
 
-                  │ Automatic token generation
+│  │ Managed Identity Authentication               │  │``````
 
-### Prerequisites                  │
+│  │ (APIM → Azure OpenAI)                         │  │
+
+│  └───────────────────────────────────────────────┘  │Frontend (Browser/Mobile App)┌─────────────────┐
+
+└─────────────────┬───────────────────────────────────┘
+
+                  │    ↓ WebSocket (wss://)│  Frontend App   │  (Web, Mobile, On-Prem)
 
                   ▼
 
-- Azure subscription          ┌───────────────────┐
+         ┌─────────────────┐Azure API Management (Subscription Key Auth)│  JavaScript/    │
 
-- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)          │  Azure OpenAI     │
+         │ Container App   │
 
-- Docker Desktop          │  gpt-realtime     │
+         │ (FastAPI Proxy) │    ↓│  Python/C#      │
 
-- PowerShell or Bash          │  (Sweden Central) │
+         │ + NBK Knowledge │
+
+         └────────┬────────┘Backend Container App (FastAPI WebSocket Proxy)└────────┬────────┘
+
+                  │
+
+                  ▼    ├─ Loads nbk_knowledge.json (3 KB entries)         │ WebSocket + api-key header
+
+          ┌───────────────────┐
+
+          │  Azure OpenAI     │    ├─ Injects system prompt with NBK info         │
+
+          │  gpt-realtime     │
+
+          │  (Sweden Central) │    ├─ Configures Echo voice & VAD settings         ▼
 
           └───────────────────┘
 
-### Deploy in 3 Steps```
+```    └─ Proxies to Azure OpenAI Realtime API┌─────────────────────────────────────────────────────┐
 
 
 
-```bash### Authentication Layers
+### Key Components```│          Azure API Management (APIM)                │
 
-# 1. Login to Azure
 
-azd auth login1. **Frontend → APIM**: Subscription key authentication via `api-key` header
 
-   - Public endpoint accessible from anywhere (web, mobile, on-prem)
+- **Backend**: Python FastAPI WebSocket proxy (`backend/main.py`)│  ┌───────────────────────────────────────────────┐  │
 
-# 2. Initialize environment   - Single API key shared with frontend teams
+- **Infrastructure**: Bicep templates for Azure resources (`main.bicep`, `modules/`)
 
-azd init
+- **Knowledge Base**: Scraped NBK website content (`nbk_knowledge.json`)### Key Components│  │ Subscription Key Authentication               │  │
+
+- **Deployment**: Azure Developer CLI with remote Docker builds
+
+│  │ (Frontend → APIM)                             │  │
+
+### Authentication Layers
+
+- **Backend**: Python FastAPI WebSocket proxy (`backend/main.py`)│  └───────────────────────────────────────────────┘  │
+
+1. **Frontend → APIM**: Subscription key authentication via `api-key` header
+
+   - Public endpoint accessible from anywhere (web, mobile, on-prem)- **Infrastructure**: Bicep templates for Azure resources (`main.bicep`, `modules/`)│  ┌───────────────────────────────────────────────┐  │
+
+   - Single API key shared with frontend teams
+
+- **Knowledge Base**: Scraped NBK website content (`nbk_knowledge.json`)│  │ Managed Identity Authentication               │  │
 
 2. **APIM → Azure OpenAI**: System-Assigned Managed Identity
 
-# 3. Deploy everything   - Automatic Azure AD token generation
+   - Automatic Azure AD token generation- **Frontend Example**: Browser-based test interface (`test-frontend-vad.html`)│  │ (APIM → Azure OpenAI)                         │  │
 
-azd up   - No credentials stored in code or configuration
+   - No credentials stored in code or configuration
 
-```   - Policy: `authentication-managed-identity` with `https://cognitiveservices.azure.com` resource
-
-
-
-**Deployment time**: ~15 minutes### Knowledge Grounding
+   - Policy: `authentication-managed-identity` with `https://cognitiveservices.azure.com` resource│  └───────────────────────────────────────────────┘  │
 
 
 
-### Get Your EndpointThe assistant uses **web scraping** instead of Bing Search API (retiring August 2025) or Azure AI Search:
+## 📋 Prerequisites## Quick Start└─────────────────┬───────────────────────────────────┘
 
 
 
-After deployment:1. **Scraper**: `scrape_nbk.py` uses BeautifulSoup to extract content from nbk.com
+- **Azure Subscription**: Active subscription with Contributor access                  │ Automatic token generation
 
-2. **Storage**: Scraped content saved to `nbk_knowledge.json` (committed to repo)
+- **Azure Developer CLI (azd)**: [Install here](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
-```bash3. **Integration**: Knowledge loaded into system prompt at session start
+- **Python 3.11+**: For post-provision hook (knowledge scraping)### Prerequisites                  │
 
-azd env get-values4. **Automation**: Post-deployment hook automatically runs scraper on fresh deployments
+- **Git**: For cloning the repository
 
-```
+- **No Docker needed!** Builds remotely in Azure Container Registry                  ▼
 
-**Why web scraping?**
 
-Look for:- Bing Search API retiring in August 2025
 
-- `FULL_WEBSOCKET_URL` - Complete endpoint with API key- Azure AI Search requires complex setup (indexes, chunking, embeddings)
+## 🚀 One-Command Deployment- Azure subscription          ┌───────────────────┐
 
-- `APIM_SUBSCRIPTION_KEY` - Your authentication key- NBK website has public information suitable for scraping
 
-- Simple, maintainable, zero-config solution
 
-## Usage
+This project is designed for **zero-configuration deployment**:- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)          │  Azure OpenAI     │
 
-## 📋 Prerequisites
 
-### Connect from JavaScript
 
-- **Azure Subscription**: Active subscription with Contributor access
+```powershell- Docker Desktop          │  gpt-realtime     │
 
-```javascript- **Azure Developer CLI (azd)**: [Install here](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+# 1. Clone repository
 
-const ws = new WebSocket("wss://your-apim.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime&api-key=YOUR-KEY");- **Python 3.11+**: For local testing (not required for frontend integration)
+git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git- PowerShell or Bash          │  (Sweden Central) │
 
-- **PyAudio**: For microphone/speaker access (local testing only)
+cd NBK-gpt-realtime
 
-ws.onopen = () => {- **Git**: For cloning the repository
-
-  console.log("Connected to NBK Voice Assistant");
-
-  // Start streaming audio from microphone## 🚀 Deployment
-
-};
-
-### One-Command Deployment
-
-ws.onmessage = (event) => {
-
-  const msg = JSON.parse(event.data);This project is designed for **zero-configuration deployment** on customer tenants:
-
-  if (msg.type === 'response.audio.delta') {
-
-    // Play audio response```powershell
-
-    playAudio(msg.delta);# 1. Clone repository
-
-  }git clone <repo-url>
-
-};cd "S2S Realtime NBK"
-
-```
+          └───────────────────┘
 
 # 2. Login to Azure
 
-See `test-frontend-vad.html` for complete browser implementation.azd auth login
+azd auth login### Deploy in 3 Steps```
 
 
 
-### Test the Deployment# 3. Deploy everything (infrastructure + scraper + configuration)
+# 3. Deploy everything (10-15 minutes)
 
 azd up
 
-```bash```
-
-# Check backend health
-
-curl https://ca-nbk-backend-<suffix>.azurecontainerapps.io/health### What Happens During Deployment
+``````bash### Authentication Layers
 
 
 
-# View backend logs1. **Infrastructure Deployment** (via Bicep):
+### What Happens During Deployment# 1. Login to Azure
 
-az containerapp logs show --name <CONTAINER_APP_NAME> --resource-group <RG_NAME> --follow   - Azure API Management (APIM) with subscription key
 
-```   - Azure OpenAI with gpt-realtime model (Sweden Central)
+
+1. **Infrastructure Deployment** (via Bicep):azd auth login1. **Frontend → APIM**: Subscription key authentication via `api-key` header
+
+   - Azure API Management (APIM) with subscription key
+
+   - Azure OpenAI with gpt-realtime model (Sweden Central)   - Public endpoint accessible from anywhere (web, mobile, on-prem)
+
+   - Azure Container Registry for Docker images
+
+   - Azure Container Apps environment# 2. Initialize environment   - Single API key shared with frontend teams
 
    - Application Insights for monitoring
 
-## Configuration   - Log Analytics workspace
+   - Log Analytics workspaceazd init
 
    - System-Assigned Managed Identity for APIM
 
-### Update NBK Knowledge   - Role assignment: APIM → Azure OpenAI (Cognitive Services User)
+   - Role assignment: APIM → Azure OpenAI (Cognitive Services User)2. **APIM → Azure OpenAI**: System-Assigned Managed Identity
 
 
 
-1. Edit `scrape_nbk.py` to add/modify URLs2. **Post-Deployment Automation** (via `infra/hooks/postprovision.ps1`):
+2. **Docker Build** (remote in Azure):# 3. Deploy everything   - Automatic Azure AD token generation
 
-2. Run: `python scrape_nbk.py`   - Creates Python virtual environment
+   - Builds backend Docker image in Azure Container Registry
 
-3. Deploy: `azd deploy backend`   - Installs requirements from `requirements.txt`
+   - No local Docker installation requiredazd up   - No credentials stored in code or configuration
+
+   - Controlled by `remoteBuild: true` in `azure.yaml`
+
+```   - Policy: `authentication-managed-identity` with `https://cognitiveservices.azure.com` resource
+
+3. **Container Deployment**:
+
+   - Deploys FastAPI backend to Container Apps
+
+   - Configures environment variables (OpenAI endpoint, API key)
+
+   - Sets up auto-scaling (1-3 replicas)**Deployment time**: ~15 minutes### Knowledge Grounding
+
+
+
+4. **Post-Deployment Automation** (via `infra/hooks/postprovision.ps1`):
+
+   - Creates Python virtual environment
+
+   - Installs requirements from `requirements.txt`### Get Your EndpointThe assistant uses **web scraping** instead of Bing Search API (retiring August 2025) or Azure AI Search:
 
    - Runs `scrape_nbk.py` to fetch NBK knowledge base
 
-### Adjust Voice Settings   - Extracts azd outputs (WebSocket URL, API key, etc.)
+   - Extracts azd outputs (WebSocket URL, API key, etc.)
 
    - Displays formatted connection information
 
-Edit `backend/main.py`:   - Saves `deployment-config.txt` for frontend team
+   - Saves `deployment-config.txt` for frontend teamAfter deployment:1. **Scraper**: `scrape_nbk.py` uses BeautifulSoup to extract content from nbk.com
 
 
 
-```python3. **Output** (displayed in terminal):
+5. **Output** (displayed in terminal):2. **Storage**: Scraped content saved to `nbk_knowledge.json` (committed to repo)
 
-# Change voice (line 131)   ```
+   ```
 
-"voice": "echo"  # Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse   ========================================
+   ================================================================```bash3. **Integration**: Knowledge loaded into system prompt at session start
 
-   NBK Realtime API - Deployment Complete
+   FRONTEND CONFIGURATION
 
-# Adjust VAD sensitivity (lines 134-138)   ========================================
+   ================================================================azd env get-values4. **Automation**: Post-deployment hook automatically runs scraper on fresh deployments
 
-"turn_detection": {
+   
 
-    "threshold": 0.5,           # Lower = more sensitive   WebSocket URL:
+   WebSocket URL:```
 
-    "silence_duration_ms": 500  # Lower = faster response     wss://apim-xxxxx.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview
+     wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime
 
-}
+   **Why web scraping?**
 
-```   API Key (Subscription):
+   API Key:
 
-     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     your-subscription-key-hereLook for:- Bing Search API retiring in August 2025
 
-Then redeploy: `azd deploy backend`
+   
 
-   Authentication Header:
+   Authentication:- `FULL_WEBSOCKET_URL` - Complete endpoint with API key- Azure AI Search requires complex setup (indexes, chunking, embeddings)
 
-## Project Structure     api-key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     Add header: api-key: YOUR_KEY
+
+   ```- `APIM_SUBSCRIPTION_KEY` - Your authentication key- NBK website has public information suitable for scraping
 
 
 
-```   Deployment Details:
+## 🔌 Usage- Simple, maintainable, zero-config solution
 
-.     Resource Group: rg-xxxxx
 
-├── backend/                    # FastAPI WebSocket proxy     Region: uksouth
 
-│   ├── main.py                # Main application logic     API Version: 2024-10-01-preview
+### Connect from JavaScript (Browser)## Usage
 
-│   └── requirements.txt       # Python dependencies   ```
 
-├── modules/                    # Bicep infrastructure modules
 
-│   ├── apim.bicep             # API Management### Frontend Integration
+```javascript## 📋 Prerequisites
 
-│   ├── containerapp.bicep     # Container App + Environment
+const ws = new WebSocket("wss://your-apim.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime", [
 
-│   ├── foundry.bicep          # Azure OpenAIAfter deployment, share the following with your frontend team:
+  "realtime",### Connect from JavaScript
 
-│   └── registry.bicep         # Container Registry
+  "your-api-key-here"
 
-├── infra/hooks/               # Post-deployment scripts1. **Connection Details**: See `deployment-config.txt` or run `.\scripts\get-connection-info.ps1`
+]);- **Azure Subscription**: Active subscription with Contributor access
 
-│   └── postprovision.ps1      # Scrapes NBK knowledge2. **Integration Guide**: See `FRONTEND.md` for code examples in JavaScript, Python, and C#
 
-├── main.bicep                 # Main infrastructure template3. **Test Client**: Run `python examples\test-client.py` to validate the backend
 
-├── main.parameters.json       # Infrastructure parameters
+ws.onopen = () => {```javascript- **Azure Developer CLI (azd)**: [Install here](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 
-├── azure.yaml                 # Azure Developer CLI config**No additional configuration needed!** Frontend teams can start integrating immediately.
+  console.log("Connected to NBK Voice Assistant");
 
-├── Dockerfile                 # Backend container image
+  // Start streaming audio from microphoneconst ws = new WebSocket("wss://your-apim.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime&api-key=YOUR-KEY");- **Python 3.11+**: For local testing (not required for frontend integration)
 
-├── nbk_knowledge.json         # NBK knowledge base## 🧪 Testing
+};
 
-├── scrape_nbk.py              # Knowledge scraper
+- **PyAudio**: For microphone/speaker access (local testing only)
 
-└── DEPLOYMENT_GUIDE.md        # Comprehensive deployment docs### Validate Deployment
+ws.onmessage = (event) => {
+
+  const msg = JSON.parse(event.data);ws.onopen = () => {- **Git**: For cloning the repository
+
+  if (msg.type === 'response.audio.delta') {
+
+    // Play audio response  console.log("Connected to NBK Voice Assistant");
+
+    playAudio(msg.delta);
+
+  }  // Start streaming audio from microphone## 🚀 Deployment
+
+};
+
+```};
+
+
+
+### Connect from Python### One-Command Deployment
+
+
+
+```pythonws.onmessage = (event) => {
+
+import websockets
+
+import asyncio  const msg = JSON.parse(event.data);This project is designed for **zero-configuration deployment** on customer tenants:
+
+
+
+async def connect_to_nbk():  if (msg.type === 'response.audio.delta') {
+
+    uri = "wss://your-apim.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime"
+
+    headers = {"api-key": "your-subscription-key"}    // Play audio response```powershell
+
+    
+
+    async with websockets.connect(uri, extra_headers=headers) as ws:    playAudio(msg.delta);# 1. Clone repository
+
+        print("Connected!")
+
+        # Send audio, receive responses  }git clone <repo-url>
 
 ```
 
+};cd "S2S Realtime NBK"
+
+### Get Your Deployment Info
+
+```
+
+After deployment, retrieve connection details:
+
+# 2. Login to Azure
+
 ```powershell
 
-## Features# Run validation script
+# Get all environment variablesSee `test-frontend-vad.html` for complete browser implementation.azd auth login
+
+azd env get-values
+
+
+
+# Get specific values (PowerShell)
+
+azd env get-values | Select-String "FULL_WEBSOCKET_URL"### Test the Deployment# 3. Deploy everything (infrastructure + scraper + configuration)
+
+azd env get-values | Select-String "APIM_SUBSCRIPTION_KEY"
+
+azd up
+
+# Linux/Mac
+
+azd env get-values | grep FULL_WEBSOCKET_URL```bash```
+
+```
+
+# Check backend health
+
+Configuration is also saved to `deployment-config.txt`.
+
+curl https://ca-nbk-backend-<suffix>.azurecontainerapps.io/health### What Happens During Deployment
+
+## 🔧 Configuration
+
+
+
+### Update NBK Knowledge
+
+# View backend logs1. **Infrastructure Deployment** (via Bicep):
+
+```powershell
+
+# 1. Edit scrape_nbk.py to add/modify URLsaz containerapp logs show --name <CONTAINER_APP_NAME> --resource-group <RG_NAME> --follow   - Azure API Management (APIM) with subscription key
+
+# 2. Run scraper
+
+python scrape_nbk.py```   - Azure OpenAI with gpt-realtime model (Sweden Central)
+
+
+
+# 3. Redeploy backend   - Application Insights for monitoring
+
+azd deploy
+
+```## Configuration   - Log Analytics workspace
+
+
+
+### Adjust Voice Settings   - System-Assigned Managed Identity for APIM
+
+
+
+Edit `backend/main.py`:### Update NBK Knowledge   - Role assignment: APIM → Azure OpenAI (Cognitive Services User)
+
+
+
+```python
+
+# Change voice (line ~131)
+
+"voice": "echo"  # Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse1. Edit `scrape_nbk.py` to add/modify URLs2. **Post-Deployment Automation** (via `infra/hooks/postprovision.ps1`):
+
+
+
+# Adjust VAD sensitivity (lines ~134-138)2. Run: `python scrape_nbk.py`   - Creates Python virtual environment
+
+"turn_detection": {
+
+    "threshold": 0.5,           # Lower = more sensitive (0.0-1.0)3. Deploy: `azd deploy backend`   - Installs requirements from `requirements.txt`
+
+    "silence_duration_ms": 500  # Lower = faster response
+
+}   - Runs `scrape_nbk.py` to fetch NBK knowledge base
+
+
+
+# Enable/disable interruptions (line ~140)### Adjust Voice Settings   - Extracts azd outputs (WebSocket URL, API key, etc.)
+
+"input_audio_transcription": {
+
+    "model": "whisper-1"   - Displays formatted connection information
+
+}
+
+```Edit `backend/main.py`:   - Saves `deployment-config.txt` for frontend team
+
+
+
+After changes:
+
+```powershell
+
+azd deploy```python3. **Output** (displayed in terminal):
+
+```
+
+# Change voice (line 131)   ```
+
+## 📊 Monitoring & Logs
+
+"voice": "echo"  # Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse   ========================================
+
+```powershell
+
+# View all logs in Application Insights   NBK Realtime API - Deployment Complete
+
+azd monitor
+
+# Adjust VAD sensitivity (lines 134-138)   ========================================
+
+# View Container App logs
+
+az containerapp logs show \"turn_detection": {
+
+  --name <CONTAINER_APP_NAME> \
+
+  --resource-group <RESOURCE_GROUP> \    "threshold": 0.5,           # Lower = more sensitive   WebSocket URL:
+
+  --follow
+
+    "silence_duration_ms": 500  # Lower = faster response     wss://apim-xxxxx.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview
+
+# Check backend health
+
+curl https://<CONTAINER_APP_FQDN>/health}
+
+```
+
+```   API Key (Subscription):
+
+## 🧪 Testing
+
+     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Test your deployment:
+
+Then redeploy: `azd deploy backend`
+
+```powershell
+
+# Run included test script   Authentication Header:
 
 .\scripts\test-deployment.ps1
 
-### ✅ Automatic Knowledge Injection
+## Project Structure     api-key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# Or with verbose output
+# Or test manually with WebSocket client
 
-The backend automatically:.\scripts\test-deployment.ps1 -Verbose
+# See nbk-frontend.html for browser-based test
 
-1. Loads `nbk_knowledge.json` on startup```
+```
 
-2. Builds a system prompt with NBK information
+```   Deployment Details:
 
-3. Injects it into every WebSocket session### Test WebSocket Connection
+## 🔄 Update Workflow
 
-4. No manual configuration needed
+.     Resource Group: rg-xxxxx
 
 ```powershell
 
-### ✅ Voice Interruption Support# Activate virtual environment
+# Update code only (fast)├── backend/                    # FastAPI WebSocket proxy     Region: uksouth
+
+azd deploy
+
+│   ├── main.py                # Main application logic     API Version: 2024-10-01-preview
+
+# Update infrastructure + code
+
+azd up│   └── requirements.txt       # Python dependencies   ```
+
+
+
+# View current configuration├── modules/                    # Bicep infrastructure modules
+
+azd env get-values
+
+│   ├── apim.bicep             # API Management### Frontend Integration
+
+# Clean up resources
+
+azd down│   ├── containerapp.bicep     # Container App + Environment
+
+```
+
+│   ├── foundry.bicep          # Azure OpenAIAfter deployment, share the following with your frontend team:
+
+## 📁 Project Structure
+
+│   └── registry.bicep         # Container Registry
+
+```
+
+.├── infra/hooks/               # Post-deployment scripts1. **Connection Details**: See `deployment-config.txt` or run `.\scripts\get-connection-info.ps1`
+
+├── azure.yaml                  # azd configuration (remoteBuild enabled)
+
+├── main.bicep                  # Main infrastructure template│   └── postprovision.ps1      # Scrapes NBK knowledge2. **Integration Guide**: See `FRONTEND.md` for code examples in JavaScript, Python, and C#
+
+├── main.parameters.json        # Deployment parameters
+
+├── Dockerfile                  # Container image definition├── main.bicep                 # Main infrastructure template3. **Test Client**: Run `python examples\test-client.py` to validate the backend
+
+├── nbk_knowledge.json          # Scraped NBK knowledge (auto-generated)
+
+├── scrape_nbk.py              # Knowledge base scraper├── main.parameters.json       # Infrastructure parameters
+
+├── requirements.txt           # Python dependencies
+
+├── backend/├── azure.yaml                 # Azure Developer CLI config**No additional configuration needed!** Frontend teams can start integrating immediately.
+
+│   ├── main.py               # FastAPI WebSocket proxy
+
+│   └── requirements.txt      # Backend dependencies├── Dockerfile                 # Backend container image
+
+├── infra/
+
+│   └── hooks/├── nbk_knowledge.json         # NBK knowledge base## 🧪 Testing
+
+│       └── postprovision.ps1 # Post-deployment automation
+
+├── modules/                   # Bicep modules├── scrape_nbk.py              # Knowledge scraper
+
+│   ├── apim.bicep
+
+│   ├── foundry.bicep└── DEPLOYMENT_GUIDE.md        # Comprehensive deployment docs### Validate Deployment
+
+│   ├── registry.bicep
+
+│   ├── containerapp.bicep```
+
+│   └── ...
+
+└── scripts/```powershell
+
+    └── test-deployment.ps1   # Deployment test script
+
+```## Features# Run validation script
+
+
+
+## 🎯 Why Web Scraping?.\scripts\test-deployment.ps1
+
+
+
+The assistant uses **web scraping** instead of:### ✅ Automatic Knowledge Injection
+
+
+
+- **Bing Search API** (retiring August 2025)# Or with verbose output
+
+- **Azure AI Search** (requires complex setup: indexes, chunking, embeddings)
+
+The backend automatically:.\scripts\test-deployment.ps1 -Verbose
+
+**Benefits:**
+
+- Simple, maintainable, zero-config solution1. Loads `nbk_knowledge.json` on startup```
+
+- NBK website has public information suitable for scraping
+
+- Automatically updates knowledge base on each deployment2. Builds a system prompt with NBK information
+
+- No additional Azure services required
+
+3. Injects it into every WebSocket session### Test WebSocket Connection
+
+## 🤝 Contributing
+
+4. No manual configuration needed
+
+1. Make changes to code or infrastructure
+
+2. Test locally if possible```powershell
+
+3. Deploy with `azd up` or `azd deploy`
+
+4. Commit changes### ✅ Voice Interruption Support# Activate virtual environment
+
+5. Push to repository
 
 .\venv\Scripts\Activate.ps1
 
+## 📄 License
+
 Users can interrupt the AI mid-sentence:
+
+[Your License Here]
 
 - Backend detects new speech via Azure OpenAI VAD# Run test client
 
+## 🆘 Support
+
 - Automatically cancels current responsepython examples\test-client.py
 
-- Processes the new user input immediately```
+For issues or questions:
 
+1. Check `deployment-config.txt` for your current configuration- Processes the new user input immediately```
 
+2. View logs with `azd monitor`
+
+3. Review Application Insights in Azure Portal
+
+4. Check Container App logs for backend issues
 
 ### ✅ Production-Ready Security### Run Full Application (Local)
 
+## 🔗 Related Documentation
 
 
-- API key authentication via APIM```powershell
 
-- No Azure OpenAI credentials exposed to frontend# Install PyAudio for microphone/speaker access
+- [QUICK_START.md](./QUICK_START.md) - Quick reference guide
+
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Detailed deployment instructions- API key authentication via APIM```powershell
+
+- [Azure OpenAI Realtime API](https://learn.microsoft.com/azure/ai-services/openai/realtime-audio-quickstart)
+
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/overview)- No Azure OpenAI credentials exposed to frontend# Install PyAudio for microphone/speaker access
+
 
 - Container Registry with admin authenticationpip install pyaudio
 

@@ -6,12 +6,13 @@ metadata:
 
 services:
   backend:
-    project: .
+    project: ./backend
     host: containerapp
     language: python
     docker:
       path: ./Dockerfile
       context: .
+      remoteBuild: true
 
 infra:
   provider: bicep

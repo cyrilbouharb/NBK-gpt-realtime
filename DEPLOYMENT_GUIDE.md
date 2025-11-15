@@ -7,51 +7,22 @@ This guide provides step-by-step instructions to deploy the NBK Realtime Voice A
 The solution consists of:
 - **Azure OpenAI Realtime API** - GPT-4o Realtime model for speech-to-speech conversations
 - **FastAPI Backend (Container App)** - WebSocket proxy that injects NBK knowledge into conversations
-- **Azure Container Registry** - Stores the backend Docker image
+- **Azure Container Registry** - Stores the backend Docker image (built remotely in Azure)
 - **Azure API Management** - Provides secure endpoint with subscription key authentication
 - **Application Insights & Log Analytics** - Monitoring and diagnostics
 
 ## Prerequisites
 
-### Choose Your Deployment Method
-
-You have **TWO options**. Choose ONE:
-
----
-
-### ✅ OPTION 1: Azure Cloud Shell (RECOMMENDED - No local setup!)
-
-**Use this if you're on a new laptop or don't want to install anything locally.**
-
-1. Go to [Azure Portal](https://portal.azure.com)
-2. Click the **Cloud Shell icon (>_)** in the top navigation bar
-3. Choose **Bash** (recommended)
-4. Clone the repository:
-   ```bash
-   git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git
-   cd NBK-gpt-realtime
-   ```
-5. Install Azure Developer CLI:
-   ```bash
-   curl -fsSL https://aka.ms/install-azd.sh | bash
-   ```
-6. **Docker is already installed in Cloud Shell** - you're ready to go!
-7. Skip to "Deployment Steps" section below
-
----
-
-### ✅ OPTION 2: Local Deployment (Mac/Windows/Linux)
-
-**Use this if you want to deploy from your local machine.**
-
 **Required tools:**
 1. **Azure Subscription** with permissions to create resources
 2. **Azure Developer CLI (azd)** - [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-3. **Docker Desktop** - [Install Docker](https://www.docker.com/products/docker-desktop/)
-   - **Mac**: Install Docker Desktop for Mac and start it (whale icon in menu bar should be stable)
-   - **Windows**: Install Docker Desktop for Windows and start it
-   - **Verify Docker is running**: `docker ps` (should show container list, not error)
+   - Windows: `winget install Microsoft.Azd`
+   - Mac: `brew tap azure/azd && brew install azd`
+   - Linux: `curl -fsSL https://aka.ms/install-azd.sh | bash`
+3. **Python 3.11+** - For post-provision hook (knowledge scraping)
 4. **Git** to clone the repository
+
+**No Docker installation required!** The Docker image is built remotely in Azure Container Registry using `remoteBuild: true` in `azure.yaml`.
 
 **Setup steps:**
 ```bash
@@ -59,23 +30,15 @@ You have **TWO options**. Choose ONE:
 git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git
 cd NBK-gpt-realtime
 
-# Verify Docker is running
-docker ps
-# Should show: CONTAINER ID   IMAGE   ... (or empty list)
-# Should NOT show: "Cannot connect to Docker daemon"
+# Verify azd is installed
+azd version
 ```
 
 ---
 
 ## Deployment Steps
 
-### 1. Clone or Navigate to the Project
-
-```powershell
-cd "C:\Users\<your-user>\POCs\S2S Realtime NBK"
-```
-
-### 2. Login to Azure
+### 1. Login to Azure
 
 ```bash
 azd auth login
@@ -83,10 +46,10 @@ azd auth login
 
 This will open a browser window for Azure authentication.
 
-### 3. Initialize the Azure Environment
+### 2. Deploy Everything
 
 ```bash
-azd init
+azd up
 ```
 
 When prompted:
@@ -94,46 +57,18 @@ When prompted:
 - **Azure subscription**: Select your target subscription
 - **Azure location**: Select your preferred region (e.g., `swedencentral`)
 
-### 4. Set Required Parameters
+This single command will:
+1. ✅ Provision all Azure resources (APIM, Azure OpenAI, Container Registry, Container Apps)
+2. ✅ Build the Docker image **remotely in Azure Container Registry** (no local Docker needed!)
+3. ✅ Push the image to Azure Container Registry
+4. ✅ Deploy the Container App with the backend service
+5. ✅ Configure APIM to route to the backend
+6. ✅ Run the post-provision hook to scrape NBK knowledge
+7. ✅ Output WebSocket URL and API key
 
-Edit `main.parameters.json` or set via azd environment variables:
+**Expected deployment time**: 10-15 minutes
 
-```bash
-azd env set AZURE_LOCATION "swedencentral"
-```
-
-### 5. Deploy Infrastructure and Application
-
-```bash
-azd up
-```
-
-This command will:
-1. Provision all Azure resources (APIM, Azure OpenAI, Container Registry, Container App Environment)
-2. Build the Docker image for the backend
-3. Push the image to Azure Container Registry
-4. Deploy the Container App with the backend service
-5. Configure APIM to route to the backend
-6. Run the post-provision hook to scrape NBK knowledge
-
-**Expected deployment time**: 15-20 minutes
-
-### 6. Retrieve Connection Information
-
-After deployment completes, get the connection details:
-
-```bash
-azd env get-values
-```
-
-Key outputs you'll need:
-- `APIM_GATEWAY_URL` - API Management gateway URL
-- `APIM_SUBSCRIPTION_KEY` - Subscription key for authentication
-- `WEBSOCKET_ENDPOINT` - Full WebSocket endpoint URL
-- `AZURE_CONTAINER_REGISTRY_NAME` - Container registry name
-- `AZURE_CONTAINER_APP_NAME` - Container App name
-
-### 7. Get Your Frontend Connection URL
+### 3. Get Your Frontend Connection URL
 
 After deployment, retrieve your WebSocket endpoint and API key:
 
