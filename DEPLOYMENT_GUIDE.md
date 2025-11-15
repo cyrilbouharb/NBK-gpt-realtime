@@ -13,33 +13,59 @@ The solution consists of:
 
 ## Prerequisites
 
-### Required Tools
+### Choose Your Deployment Method
 
-1. **Azure Subscription** with permissions to create resources
-2. **Azure Developer CLI (azd)** - [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-3. **Docker Desktop** - [Install Docker](https://www.docker.com/products/docker-desktop/)
-   - **Important**: Docker must be running before executing `azd up`
-   - Verify Docker is running: `docker ps` (should not error)
-4. **PowerShell** (Windows) or Bash (Linux/Mac)
+You have **TWO options**. Choose ONE:
 
-### Alternative: Use Azure Cloud Shell (No Local Setup Needed)
+---
 
-If you don't want to install tools locally, you can use **Azure Cloud Shell**:
+### ✅ OPTION 1: Azure Cloud Shell (RECOMMENDED - No local setup!)
+
+**Use this if you're on a new laptop or don't want to install anything locally.**
 
 1. Go to [Azure Portal](https://portal.azure.com)
-2. Click the Cloud Shell icon (>_) in the top bar
-3. Choose **Bash** or **PowerShell**
-4. Clone your repository:
+2. Click the **Cloud Shell icon (>_)** in the top navigation bar
+3. Choose **Bash** (recommended)
+4. Clone the repository:
    ```bash
    git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git
    cd NBK-gpt-realtime
    ```
-5. Azure CLI and Docker are pre-installed in Cloud Shell
-6. Install azd in Cloud Shell:
+5. Install Azure Developer CLI:
    ```bash
    curl -fsSL https://aka.ms/install-azd.sh | bash
    ```
-7. Continue with deployment steps below
+6. **Docker is already installed in Cloud Shell** - you're ready to go!
+7. Skip to "Deployment Steps" section below
+
+---
+
+### ✅ OPTION 2: Local Deployment (Mac/Windows/Linux)
+
+**Use this if you want to deploy from your local machine.**
+
+**Required tools:**
+1. **Azure Subscription** with permissions to create resources
+2. **Azure Developer CLI (azd)** - [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+3. **Docker Desktop** - [Install Docker](https://www.docker.com/products/docker-desktop/)
+   - **Mac**: Install Docker Desktop for Mac and start it (whale icon in menu bar should be stable)
+   - **Windows**: Install Docker Desktop for Windows and start it
+   - **Verify Docker is running**: `docker ps` (should show container list, not error)
+4. **Git** to clone the repository
+
+**Setup steps:**
+```bash
+# Clone the repo
+git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git
+cd NBK-gpt-realtime
+
+# Verify Docker is running
+docker ps
+# Should show: CONTAINER ID   IMAGE   ... (or empty list)
+# Should NOT show: "Cannot connect to Docker daemon"
+```
+
+---
 
 ## Deployment Steps
 
