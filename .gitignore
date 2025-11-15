@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Deployment config with sensitive data
+deployment-config.txt
+
 # Python
 __pycache__/
 *.py[cod]
