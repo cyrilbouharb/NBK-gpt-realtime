@@ -13,10 +13,33 @@ The solution consists of:
 
 ## Prerequisites
 
+### Required Tools
+
 1. **Azure Subscription** with permissions to create resources
 2. **Azure Developer CLI (azd)** - [Install azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 3. **Docker Desktop** - [Install Docker](https://www.docker.com/products/docker-desktop/)
+   - **Important**: Docker must be running before executing `azd up`
+   - Verify Docker is running: `docker ps` (should not error)
 4. **PowerShell** (Windows) or Bash (Linux/Mac)
+
+### Alternative: Use Azure Cloud Shell (No Local Setup Needed)
+
+If you don't want to install tools locally, you can use **Azure Cloud Shell**:
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Click the Cloud Shell icon (>_) in the top bar
+3. Choose **Bash** or **PowerShell**
+4. Clone your repository:
+   ```bash
+   git clone https://github.com/cyrilbouharb/NBK-gpt-realtime.git
+   cd NBK-gpt-realtime
+   ```
+5. Azure CLI and Docker are pre-installed in Cloud Shell
+6. Install azd in Cloud Shell:
+   ```bash
+   curl -fsSL https://aka.ms/install-azd.sh | bash
+   ```
+7. Continue with deployment steps below
 
 ## Deployment Steps
 
@@ -247,6 +270,29 @@ az containerapp logs show \
 3. Navigate to "Analytics" to see API usage metrics
 
 ## Troubleshooting
+
+### Issue: "Docker daemon is not running" error during `azd up`
+
+**Error message**: `error checking for external tool Docker daemon is not running`
+
+**Solutions**:
+
+**Option A: Start Docker Desktop**
+1. Open Docker Desktop application
+2. Wait for it to fully start (whale icon should be stable)
+3. Verify: `docker ps` should show no errors
+4. Run `azd up` again
+
+**Option B: Use Azure Cloud Shell (Recommended for new laptops)**
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Click Cloud Shell icon (>_) at top
+3. Choose Bash or PowerShell
+4. Run deployment commands there (Docker pre-installed)
+
+**Option C: Install Docker Desktop**
+- Windows: https://docs.docker.com/desktop/install/windows-install/
+- Mac: https://docs.docker.com/desktop/install/mac-install/
+- Linux: https://docs.docker.com/engine/install/
 
 ### Issue: Container App not starting
 
