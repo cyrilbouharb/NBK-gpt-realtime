@@ -42,11 +42,27 @@ echo ""
 
 # Step 3: Build Docker Image in ACR (Cloud Build - no local Docker needed!)
 echo "🐳 Step 3/4: Building backend container image in Azure..."
+
+# Wait a few seconds for deployment to be fully committed
+sleep 5
+
 ACR_NAME=$(az deployment group show \
   -g $RESOURCE_GROUP \
   -n main \
   --query properties.outputs.AZURE_CONTAINER_REGISTRY_NAME.value \
   -o tsv)
+
+# Check if ACR_NAME is empty
+if [ -z "$ACR_NAME" ]; then
+  echo "❌ Error: Could not retrieve ACR name from deployment"
+  echo "Trying alternative method..."
+  ACR_NAME=$(az acr list -g $RESOURCE_GROUP --query "[0].name" -o tsv)
+fi
+
+if [ -z "$ACR_NAME" ]; then
+  echo "❌ Error: No Container Registry found in resource group"
+  exit 1
+fi
 
 echo "Building image in ACR: $ACR_NAME"
 az acr build \
@@ -54,8 +70,7 @@ az acr build \
   --image nbk-backend:latest \
   --platform linux/amd64 \
   --file Dockerfile \
-  . \
-  --output none
+  .
 
 echo "✅ Container image built and pushed to ACR"
 echo ""
@@ -67,6 +82,17 @@ CONTAINER_APP_NAME=$(az deployment group show \
   -n main \
   --query properties.outputs.AZURE_CONTAINER_APP_NAME.value \
   -o tsv)
+
+# Fallback if deployment output fails
+if [ -z "$CONTAINER_APP_NAME" ]; then
+  echo "Trying alternative method to find Container App..."
+  CONTAINER_APP_NAME=$(az containerapp list -g $RESOURCE_GROUP --query "[0].name" -o tsv)
+fi
+
+if [ -z "$CONTAINER_APP_NAME" ]; then
+  echo "❌ Error: No Container App found in resource group"
+  exit 1
+fi
 
 az containerapp update \
   --name $CONTAINER_APP_NAME \
