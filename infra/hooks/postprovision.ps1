@@ -73,6 +73,11 @@ try {
     $apiVersion = $envVars['API_VERSION']
     $resourceGroup = $envVars['RESOURCE_GROUP_NAME']
     $region = $envVars['DEPLOYMENT_REGION']
+    
+    # Ensure deployment name is in URL
+    if ($fullWebsocketUrl -notmatch 'deployment=') {
+        $fullWebsocketUrl += "&deployment=gpt-realtime"
+    }
 
     Write-Host "   Configuration extracted" -ForegroundColor Green
     Write-Host ""
@@ -166,4 +171,23 @@ try {
 }
 
 Write-Host "Post-deployment complete!" -ForegroundColor Green
+Write-Host ""
+
+# Step 4: Generate production-ready frontend
+Write-Host "Step 4/4: Generating frontend with configuration..." -ForegroundColor Yellow
+Write-Host ""
+
+try {
+    & "$projectRoot\generate-frontend.ps1"
+    Write-Host ""
+} catch {
+    Write-Host "   Could not generate frontend" -ForegroundColor Yellow
+    Write-Host "   Error: $_" -ForegroundColor Red
+    Write-Host "   Run generate-frontend.ps1 manually" -ForegroundColor Yellow
+    Write-Host ""
+}
+
+Write-Host "================================================================"
+Write-Host "   Deployment Complete!" -ForegroundColor Green
+Write-Host "================================================================"
 Write-Host ""
