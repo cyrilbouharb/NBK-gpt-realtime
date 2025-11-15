@@ -2,6 +2,9 @@
 //    PARAMETERS
 // ------------------
 
+@description('The name of the azd environment')
+param environmentName string = ''
+
 param aiServicesConfig array = []
 param modelsConfig array = []
 param apimSku string
@@ -73,6 +76,7 @@ module containerAppModule './modules/containerapp.bicep' = {
   name: 'containerAppModule'
   params: {
     suffix: resourceSuffix
+    environmentName: environmentName
     azureOpenAIEndpoint: foundryModule.outputs.extendedAIServicesConfig[0].endpoint
     azureOpenAIKey: foundryModule.outputs.extendedAIServicesConfig[0].key
     deploymentName: 'gpt-realtime'
@@ -239,5 +243,7 @@ output BACKEND_FQDN string = containerAppModule.outputs.backendFqdn
 output SERVICE_BACKEND_NAME string = containerAppModule.outputs.containerAppName
 output AZURE_CONTAINER_APP_NAME string = containerAppModule.outputs.containerAppName
 output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = 'cae-${resourceSuffix}'
+// Alias for azd compatibility (some versions expect singular form)
+output AZURE_CONTAINER_ENVIRONMENT_NAME string = 'cae-${resourceSuffix}'
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = registryModule.outputs.endpoint
 output AZURE_CONTAINER_REGISTRY_NAME string = registryModule.outputs.name

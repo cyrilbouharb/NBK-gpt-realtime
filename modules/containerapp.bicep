@@ -2,6 +2,7 @@
 
 param location string = resourceGroup().location
 param suffix string
+param environmentName string = ''
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'  // Default image, azd will update
 param azureOpenAIEndpoint string
 @secure()
@@ -30,6 +31,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   location: location
   tags: {
     'azd-service-name': 'backend'
+    'azd-env-name': environmentName
   }
   properties: {
     managedEnvironmentId: containerAppEnv.id
