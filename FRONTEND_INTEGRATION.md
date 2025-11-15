@@ -1,500 +1,575 @@
 # Frontend Integration Guide - NBK Voice Assistant
 
-## Overview
+## Quick Overview
 
-This guide explains how to integrate the NBK Voice Assistant into your mobile app (iOS/Android) or web application.
+Your mobile app connects to a WebSocket endpoint, streams microphone audio, and receives AI voice responses. The backend handles all the intelligence (speech detection, NBK knowledge, etc.).
 
 ## Connection Details
 
-You'll receive these from the backend team:
-- **WebSocket URL**: `wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime`
-- **API Key**: Your APIM subscription key
-
-## Backend Configuration (Already Done)
-
-The backend automatically handles:
-- ✅ **NBK Knowledge Injection**: System prompt includes NBK website content
-- ✅ **Voice Configuration**: Uses "Echo" voice (professional male voice)
-- ✅ **Voice Activity Detection (VAD)**: Server-side detection of user speech
-- ✅ **Interruption Support**: User can interrupt AI while it's speaking
-- ✅ **Audio Format**: PCM16 (16-bit PCM audio)
-- ✅ **Azure OpenAI Authentication**: Managed automatically
-
-## What Frontend Needs to Implement
-
-### 1. UI Components
-
+You'll receive from backend team:
 ```
-┌─────────────────────────────────┐
-│  NBK Voice Assistant            │
-│                                 │
-│  [🔴 Connect]  ← Connection btn │
-│                                 │
-│  Status: Connected              │
-│                                 │
-│  [🎤 Start Speaking]            │
-│  [⏹️ Stop Speaking]             │
-│                                 │
-│  Transcript:                    │
-│  User: "What are your rates?"   │
-│  AI: "NBK offers..."            │
-│                                 │
-└─────────────────────────────────┘
+WebSocket URL: wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime
+API Key: your-subscription-key
 ```
 
-**Required UI Elements:**
-1. **Connect Button**: Establish WebSocket connection
-2. **Status Indicator**: Show connection state (Connected/Disconnected/Error)
-3. **Microphone Button**: Start/stop audio capture
-4. **Transcript Display**: Show conversation (optional but recommended)
-5. **Audio Playback**: Play AI responses
+## What You Need to Build
 
-### 2. WebSocket Connection
+### Simple UI (Recommended)
 
-#### Connect to WebSocket
+```
+┌─────────────────────────────┐
+│  NBK Voice Assistant        │
+│                             │
+│  ● Connected                │  ← Status indicator
+│                             │
+│  [🎤 Start Speaking]        │  ← One button!
+│                             │
+│  User: "What are your..."   │  ← Optional transcript
+│  NBK: "Our rates are..."    │
+└─────────────────────────────┘
+```
 
-**JavaScript Example:**
+**Required:**
+- One button to start/stop microphone
+- Status indicator (Connected/Disconnected/Error)
+
+**Optional:**
+- Transcript display
+- "Listening..." animation
+- "AI speaking..." indicator
+
+## Implementation Flow
+
+### Option A: Auto-Connect (Recommended for Mobile Apps)
+
+```
+App Opens / User Navigates to Voice Screen
+    ↓
+Automatically connect WebSocket (background)
+    ↓
+Enable "Start Speaking" button when ready
+    ↓
+User taps button → Mic starts → Audio streams
+    ↓
+Backend detects speech & responds automatically
+    ↓
+Play audio response through speakers
+```
+
+**No explicit "Connect" button needed!**
+
+### Option B: Connect on First Tap
+
+```
+User taps "Start Speaking"
+    ↓
+Connect WebSocket + Start Mic (all at once)
+    ↓
+Stream audio → Get response → Play audio
+```
+
+## Code Implementation
+
+### 1. Auto-Connect (Recommended)
+
+**JavaScript/React Example:**
 ```javascript
+// Configuration
 const WS_URL = "wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime";
 const API_KEY = "your-subscription-key";
 
-// Connect using WebSocket
-const ws = new WebSocket(WS_URL, ["realtime", API_KEY]);
+let ws = null;
+let isConnected = false;
+let isMicActive = false;
 
-ws.onopen = () => {
-    console.log("✅ Connected to NBK Voice Assistant");
-    // Update UI: Show "Connected" status
-};
+// Initialize on app load or screen mount
+function initialize() {
+    // Connect WebSocket
+    ws = new WebSocket(WS_URL, ["realtime", API_KEY]);
+    
+    ws.onopen = () => {
+        console.log("✅ Connected");
+        isConnected = true;
+        updateUI("Connected");
+        enableSpeakButton();
+    };
+    
+    ws.onerror = (error) => {
+        console.error("❌ Connection error:", error);
+        updateUI("Error");
+    };
+    
+    ws.onclose = () => {
+        console.log("Disconnected - reconnecting...");
+        isConnected = false;
+        setTimeout(initialize, 3000); // Auto-reconnect
+    };
+    
+    ws.onmessage = (event) => {
+        handleMessage(JSON.parse(event.data));
+    };
+}
 
-ws.onerror = (error) => {
-    console.error("❌ Connection error:", error);
-    // Update UI: Show error message
-};
+// Handle incoming messages
+function handleMessage(data) {
+    switch(data.type) {
+        case "response.audio.delta":
+            // Play audio response
+            const audioData = base64ToInt16(data.delta);
+            playAudio(audioData);
+            break;
+            
+        case "conversation.item.input_audio_transcription.completed":
+            // Show user transcript (optional)
+            showTranscript("User", data.transcript);
+            break;
+            
+        case "response.text.delta":
+            // Show AI transcript (optional)
+            showTranscript("NBK", data.delta);
+            break;
+    }
+}
 
-ws.onclose = () => {
-    console.log("🔌 Disconnected");
-    // Update UI: Show "Disconnected" status
-};
-```
-
-**iOS (Swift) Example:**
-```swift
-import Foundation
-
-let wsURL = URL(string: "wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime")!
-var webSocket: URLSessionWebSocketTask?
-
-let session = URLSession(configuration: .default)
-webSocket = session.webSocketTask(with: wsURL)
-
-// Add API key to headers
-var request = URLRequest(url: wsURL)
-request.setValue("your-subscription-key", forHTTPHeaderField: "api-key")
-
-webSocket?.resume()
-```
-
-**Android (Kotlin) Example:**
-```kotlin
-import okhttp3.*
-
-val client = OkHttpClient()
-val wsUrl = "wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime"
-val apiKey = "your-subscription-key"
-
-val request = Request.Builder()
-    .url(wsUrl)
-    .addHeader("api-key", apiKey)
-    .build()
-
-val ws = client.newWebSocket(request, object : WebSocketListener() {
-    override fun onOpen(webSocket: WebSocket, response: Response) {
-        println("✅ Connected")
+// User clicks "Start Speaking" button
+async function toggleMicrophone() {
+    if (!isConnected) {
+        alert("Not connected. Please wait...");
+        return;
     }
     
-    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        println("❌ Error: ${t.message}")
+    if (!isMicActive) {
+        // Start microphone
+        await startMicrophone();
+        isMicActive = true;
+        updateButtonUI("Stop Speaking");
+    } else {
+        // Stop microphone
+        stopMicrophone();
+        isMicActive = false;
+        updateButtonUI("Start Speaking");
     }
-})
-```
+}
 
-### 3. Audio Capture & Streaming
-
-#### Capture Audio from Microphone
-
-**Requirements:**
-- **Format**: PCM16 (16-bit signed integer)
-- **Sample Rate**: 24000 Hz (24 kHz)
-- **Channels**: Mono (1 channel)
-- **Encoding**: Base64 (before sending over WebSocket)
-
-**JavaScript Example:**
-```javascript
-let audioContext;
-let mediaStream;
-let audioWorkletNode;
-
-async function startAudioCapture() {
-    // Request microphone access
-    mediaStream = await navigator.mediaDevices.getUserMedia({ 
+// Start capturing audio
+async function startMicrophone() {
+    const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
             sampleRate: 24000,
             channelCount: 1,
             echoCancellation: true,
             noiseSuppression: true
-        } 
+        }
+    });
+    
+    // Set up audio processing (see Audio Capture section below)
+    setupAudioProcessing(stream);
+}
+
+// Call on app start
+initialize();
+```
+
+**iOS Swift Example:**
+```swift
+import AVFoundation
+import Starscream
+
+class VoiceAssistant: WebSocketDelegate {
+    var socket: WebSocket!
+    var audioEngine: AVAudioEngine!
+    var isConnected = false
+    
+    // Initialize on view load
+    func initialize() {
+        let wsURL = URL(string: "wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime")!
+        var request = URLRequest(url: wsURL)
+        request.setValue("your-subscription-key", forHTTPHeaderField: "api-key")
+        
+        socket = WebSocket(request: request)
+        socket.delegate = self
+        socket.connect()
+    }
+    
+    func didReceive(event: WebSocketEvent, client: WebSocket) {
+        switch event {
+        case .connected:
+            print("✅ Connected")
+            isConnected = true
+            DispatchQueue.main.async {
+                self.updateUI(status: "Connected")
+            }
+            
+        case .text(let message):
+            handleMessage(message)
+            
+        case .disconnected:
+            print("Reconnecting...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                self.initialize()
+            }
+            
+        default:
+            break
+        }
+    }
+    
+    // User taps speak button
+    func toggleMicrophone() {
+        guard isConnected else {
+            showAlert("Not connected")
+            return
+        }
+        
+        if !isMicActive {
+            startMicrophone()
+        } else {
+            stopMicrophone()
+        }
+    }
+}
+```
+
+**Android Kotlin Example:**
+```kotlin
+import okhttp3.*
+import java.util.concurrent.TimeUnit
+
+class VoiceAssistant {
+    private var webSocket: WebSocket? = null
+    private var isConnected = false
+    private var isMicActive = false
+    
+    // Initialize on activity/fragment creation
+    fun initialize() {
+        val client = OkHttpClient.Builder()
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .build()
+            
+        val request = Request.Builder()
+            .url("wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime")
+            .addHeader("api-key", "your-subscription-key")
+            .build()
+            
+        webSocket = client.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                println("✅ Connected")
+                isConnected = true
+                runOnUiThread { updateUI("Connected") }
+            }
+            
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                handleMessage(text)
+            }
+            
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                println("Reconnecting...")
+                Handler(Looper.getMainLooper()).postDelayed({
+                    initialize()
+                }, 3000)
+            }
+            
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                println("Error: ${t.message}")
+            }
+        })
+    }
+    
+    // User taps speak button
+    fun toggleMicrophone() {
+        if (!isConnected) {
+            showToast("Not connected")
+            return
+        }
+        
+        if (!isMicActive) {
+            startMicrophone()
+            isMicActive = true
+        } else {
+            stopMicrophone()
+            isMicActive = false
+        }
+    }
+}
+```
+
+### 2. Audio Capture & Streaming
+
+**Requirements:**
+- Format: PCM16 (16-bit signed integer)
+- Sample Rate: 24000 Hz
+- Channels: Mono (1)
+- Encoding: Base64 for WebSocket transmission
+
+**JavaScript:**
+```javascript
+let audioContext;
+let mediaStreamSource;
+let processor;
+
+async function startMicrophone() {
+    // Get microphone access
+    const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            sampleRate: 24000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+        }
     });
     
     // Create audio context
     audioContext = new AudioContext({ sampleRate: 24000 });
-    const source = audioContext.createMediaStreamSource(mediaStream);
+    mediaStreamSource = audioContext.createMediaStreamSource(stream);
     
-    // Process audio
-    await audioContext.audioWorklet.addModule('audio-processor.js');
-    audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+    // Create processor for audio chunks
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
     
-    audioWorkletNode.port.onmessage = (event) => {
-        const pcm16Data = event.data; // Int16Array
-        sendAudioToBackend(pcm16Data);
+    processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        
+        // Convert Float32 to Int16 (PCM16)
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+            pcm16[i] = Math.max(-32768, Math.min(32767, Math.floor(inputData[i] * 32768)));
+        }
+        
+        // Convert to base64
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+        
+        // Send to backend
+        sendAudio(base64);
     };
     
-    source.connect(audioWorkletNode);
-    audioWorkletNode.connect(audioContext.destination);
+    mediaStreamSource.connect(processor);
+    processor.connect(audioContext.destination);
 }
 
-function sendAudioToBackend(pcm16Data) {
-    // Convert PCM16 to base64
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcm16Data.buffer)));
-    
-    // Send to backend
-    const message = {
-        type: "input_audio_buffer.append",
-        audio: base64Audio
-    };
-    
-    ws.send(JSON.stringify(message));
-}
-
-function stopAudioCapture() {
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
+function sendAudio(base64Audio) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: "input_audio_buffer.append",
+            audio: base64Audio
+        }));
     }
-    if (audioContext) {
-        audioContext.close();
+}
+
+function stopMicrophone() {
+    if (processor) processor.disconnect();
+    if (mediaStreamSource) mediaStreamSource.disconnect();
+    if (audioContext) audioContext.close();
+}
+```
+
+### 3. Audio Playback
+
+**JavaScript:**
+```javascript
+function playAudio(base64Audio) {
+    // Decode base64 to Int16Array
+    const binary = atob(base64Audio);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    const pcm16 = new Int16Array(bytes.buffer);
+    
+    // Convert to Float32 for Web Audio API
+    const float32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) {
+        float32[i] = pcm16[i] / 32768.0;
+    }
+    
+    // Create audio buffer and play
+    const audioContext = new AudioContext({ sampleRate: 24000 });
+    const buffer = audioContext.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
+    
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start();
+}
+
+// In your message handler
+function handleMessage(data) {
+    if (data.type === "response.audio.delta") {
+        playAudio(data.delta);
     }
 }
 ```
 
-**iOS (Swift) Example:**
-```swift
-import AVFoundation
+## Important Message Types
 
-var audioEngine: AVAudioEngine!
-var inputNode: AVAudioInputNode!
+### Messages You Send
 
-func startAudioCapture() {
-    audioEngine = AVAudioEngine()
-    inputNode = audioEngine.inputNode
-    
-    let recordingFormat = inputNode.outputFormat(forBus: 0)
-    let desiredFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, 
-                                      sampleRate: 24000, 
-                                      channels: 1, 
-                                      interleaved: false)!
-    
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, time in
-        // Convert to PCM16 and send
-        self.sendAudioToBackend(buffer: buffer)
-    }
-    
-    try? audioEngine.start()
-}
-
-func sendAudioToBackend(buffer: AVAudioPCMBuffer) {
-    // Convert to Int16 PCM and base64
-    // Send via WebSocket
-}
-```
-
-### 4. Message Types
-
-#### Messages You SEND to Backend
-
-**1. Append Audio to Input Buffer**
+**Stream Audio:**
 ```json
 {
     "type": "input_audio_buffer.append",
-    "audio": "BASE64_ENCODED_PCM16_AUDIO"
+    "audio": "BASE64_PCM16_AUDIO_DATA"
 }
 ```
 
-**2. Commit Audio Buffer (trigger response)**
-```json
-{
-    "type": "input_audio_buffer.commit"
-}
-```
+### Messages You Receive
 
-**3. Clear Audio Buffer**
-```json
-{
-    "type": "input_audio_buffer.clear"
-}
-```
-
-**4. Cancel Response (interrupt AI)**
-```json
-{
-    "type": "response.cancel"
-}
-```
-
-#### Messages You RECEIVE from Backend
-
-**1. Session Created**
-```json
-{
-    "type": "session.created",
-    "session": { /* session details */ }
-}
-```
-
-**2. Audio Response Delta** ⭐ **PLAY THIS AUDIO**
+**Audio Response (PLAY THIS):**
 ```json
 {
     "type": "response.audio.delta",
-    "response_id": "resp_123",
-    "item_id": "item_456",
-    "output_index": 0,
-    "content_index": 0,
-    "delta": "BASE64_ENCODED_PCM16_AUDIO"
-}
-```
-**Action**: Decode base64, convert to PCM16, play through speakers
-
-**3. Audio Response Done**
-```json
-{
-    "type": "response.audio.done",
-    "response_id": "resp_123"
+    "delta": "BASE64_PCM16_AUDIO_DATA"
 }
 ```
 
-**4. Transcript Delta** (User Speech)
+**User Transcript (Optional):**
 ```json
 {
     "type": "conversation.item.input_audio_transcription.completed",
     "transcript": "What are your interest rates?"
 }
 ```
-**Action**: Display in transcript UI
 
-**5. Text Response** (AI Response Text)
+**AI Text (Optional):**
 ```json
 {
     "type": "response.text.delta",
     "delta": "NBK offers competitive rates..."
 }
 ```
-**Action**: Display in transcript UI
 
-**6. Speech Detected**
-```json
-{
-    "type": "input_audio_buffer.speech_started"
-}
-```
-**Action**: Show "Listening..." indicator
+## What Backend Handles Automatically
 
-**7. Speech Ended**
-```json
-{
-    "type": "input_audio_buffer.speech_stopped"
-}
-```
-**Action**: Hide "Listening..." indicator
+You **DON'T** need to implement:
+- ❌ Voice Activity Detection (VAD) - Backend detects when user speaks
+- ❌ Turn-taking logic - Backend knows when to respond
+- ❌ Interruption handling - Just keep streaming, backend handles it
+- ❌ NBK knowledge - Already injected by backend
+- ❌ Azure OpenAI auth - Backend handles it
 
-### 5. Audio Playback
+You **ONLY** need to:
+- ✅ Connect WebSocket
+- ✅ Stream microphone audio continuously
+- ✅ Play received audio
+- ✅ Show UI (button + status)
 
-When you receive `response.audio.delta`:
+## Testing Checklist
 
-**JavaScript:**
-```javascript
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    
-    if (data.type === "response.audio.delta") {
-        const base64Audio = data.delta;
-        const pcm16Data = base64ToInt16Array(base64Audio);
-        playAudio(pcm16Data);
-    }
-};
-
-function base64ToInt16Array(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return new Int16Array(bytes.buffer);
-}
-
-function playAudio(pcm16Data) {
-    const audioContext = new AudioContext({ sampleRate: 24000 });
-    const audioBuffer = audioContext.createBuffer(1, pcm16Data.length, 24000);
-    audioBuffer.getChannelData(0).set(
-        new Float32Array(pcm16Data).map(x => x / 32768)
-    );
-    
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start();
-}
-```
-
-### 6. Recommended User Flow
-
-```
-1. User taps "Connect" button
-   → Establish WebSocket connection
-   → Show "Connected" status
-
-2. User taps "Start Speaking" button (microphone icon)
-   → Request microphone permission (if needed)
-   → Start capturing audio
-   → Stream audio chunks to backend via WebSocket
-   → Show "Listening..." indicator
-
-3. Backend detects speech (VAD)
-   → Receives "input_audio_buffer.speech_started"
-   → Show visual feedback "🎤 Speaking..."
-
-4. User stops speaking (silence detected by backend VAD)
-   → Receives "input_audio_buffer.speech_stopped"
-   → Backend automatically triggers AI response
-
-5. AI responds
-   → Receives "response.audio.delta" messages
-   → Decode and play audio through speakers
-   → Display transcript in UI (optional)
-
-6. User can interrupt AI at any time
-   → Just start speaking again
-   → Backend automatically cancels current response
-   → Backend detects new speech and processes it
-```
-
-### 7. Error Handling
-
-```javascript
-ws.onerror = (error) => {
-    console.error("WebSocket error:", error);
-    // Show error message to user
-    alert("Connection error. Please try again.");
-};
-
-ws.onclose = (event) => {
-    if (event.code !== 1000) {
-        // Abnormal closure
-        console.error(`Connection closed: ${event.code} - ${event.reason}`);
-        // Try to reconnect
-        setTimeout(connectWebSocket, 3000);
-    }
-};
-```
-
-### 8. Testing Checklist
-
-- [ ] Can establish WebSocket connection
+- [ ] WebSocket connects successfully
 - [ ] Can capture microphone audio
-- [ ] Can send audio to backend
-- [ ] Can receive and play AI audio responses
-- [ ] Can see transcripts (optional)
-- [ ] Can interrupt AI while speaking
-- [ ] Handle connection errors gracefully
-- [ ] Handle microphone permission denial
-- [ ] Test on slow network connections
+- [ ] Audio streams to backend (check Chrome DevTools or network logs)
+- [ ] Receives and plays AI voice responses
+- [ ] Can interrupt AI by speaking over it
+- [ ] Auto-reconnects if connection drops
+- [ ] Handles microphone permission denial gracefully
+- [ ] Works in both Arabic and English
 - [ ] Test with background noise
-- [ ] Test in Arabic and English
+- [ ] Test on slow network
 
-## Important Notes
+## Common Issues & Solutions
 
-### Server-Side VAD (Voice Activity Detection)
+**Issue:** Audio sounds distorted
+- **Solution:** Verify PCM16 format (16-bit, 24kHz, mono)
 
-✅ **YOU DON'T NEED TO IMPLEMENT VAD IN FRONTEND!**
+**Issue:** No response from AI
+- **Solution:** Check if audio is actually being sent (network tab)
 
-The backend automatically:
-- Detects when user starts speaking
-- Detects when user stops speaking
-- Triggers AI response when speech ends
-- Supports interruption (user can start speaking during AI response)
+**Issue:** Connection drops frequently
+- **Solution:** Implement auto-reconnect (see examples above)
 
-Just keep streaming audio continuously to the backend. The backend handles the rest.
+**Issue:** Microphone permission denied
+- **Solution:** Show clear message and instructions to enable in settings
 
-### Audio Format
+## Example Test
 
-**Critical**: Must be PCM16 format
-- Sample rate: 24000 Hz
-- Bit depth: 16-bit signed integer
-- Channels: Mono (1)
-- Encoding for WebSocket: Base64
-
-### Interruption
-
-Users can interrupt the AI naturally:
-- Just start speaking while AI is responding
-- Backend detects new speech via VAD
-- Backend sends `response.cancel` to stop current response
-- Backend processes new user input
-
-No special UI needed - works automatically!
-
-## Sample Frontend Code Repositories
-
-**Web (JavaScript/React):**
-- See `nbk-frontend.html` in this repo for basic example
-
-**iOS (Swift):**
-- [Azure OpenAI iOS Sample](https://github.com/azure-samples/aoai-realtime-audio-sdk/tree/main/samples/ios)
-
-**Android (Kotlin):**
-- [Azure OpenAI Android Sample](https://github.com/azure-samples/aoai-realtime-audio-sdk/tree/main/samples/android)
+```javascript
+// Quick test to verify connection
+ws.onopen = () => {
+    console.log("Connected! Backend is ready.");
+    
+    // Send a test text message (for debugging)
+    ws.send(JSON.stringify({
+        type: "conversation.item.create",
+        item: {
+            type: "message",
+            role: "user",
+            content: [{
+                type: "input_text",
+                text: "Hello, can you hear me?"
+            }]
+        }
+    }));
+};
+```
 
 ## Support
 
-For integration help:
-1. Check backend logs: `azd monitor`
-2. Test with included HTML frontend: `nbk-frontend.html`
-3. Contact backend team with specific error messages
+**For integration help:**
+1. Test with browser DevTools (Network tab → WS)
+2. Check backend logs: Run `azd monitor` 
+3. See `nbk-frontend.html` in repo for working example
+4. Contact backend team with specific error messages
 
-## Connection Info Template
+## Connection Template for Your Team
 
 ```
-==================================
-NBK Voice Assistant Connection
-==================================
+================================
+NBK Voice Assistant
+================================
 
 WebSocket URL:
 wss://apim-xxxxx.azure-api.net/realtime-audio/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime
 
 API Key:
-your-subscription-key-here
-
-Authentication:
-Add header: api-key: YOUR_KEY
+your-subscription-key
 
 Audio Format:
-- Format: PCM16
-- Sample Rate: 24000 Hz
-- Channels: Mono (1)
-- Encoding: Base64
+- PCM16 (16-bit signed int)
+- 24000 Hz sample rate
+- Mono (1 channel)
+- Base64 encoded for WebSocket
 
-Features:
-✅ Server-side VAD (no frontend VAD needed)
-✅ Automatic interruption support
-✅ NBK knowledge grounding
-✅ Arabic & English support
-✅ Professional Echo voice
-==================================
+Implementation:
+1. Auto-connect WebSocket on app load
+2. One button: Start/Stop speaking
+3. Stream mic audio continuously
+4. Play received audio responses
+
+Backend handles:
+✅ Speech detection (VAD)
+✅ NBK knowledge
+✅ Turn-taking
+✅ Interruptions
+✅ Arabic/English
+
+Frontend builds:
+🔨 WebSocket connection
+🔨 Mic capture
+🔨 Audio playback
+🔨 Simple UI
+================================
+```
+
+## Quick Start Summary
+
+```javascript
+// 1. Connect (on app load)
+const ws = new WebSocket(WS_URL, ["realtime", API_KEY]);
+
+// 2. Handle messages
+ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "response.audio.delta") {
+        playAudio(msg.delta); // Decode base64 → PCM16 → Play
+    }
+};
+
+// 3. Stream audio (when mic button pressed)
+function streamAudio(pcm16Data) {
+    ws.send(JSON.stringify({
+        type: "input_audio_buffer.append",
+        audio: btoa(String.fromCharCode(...new Uint8Array(pcm16Data.buffer)))
+    }));
+}
+
+// That's it! Backend handles the rest.
 ```
