@@ -6,7 +6,7 @@ metadata:
 
 services:
   backend:
-    project: ./backend
+    project: .
     host: containerapp
     language: python
     docker:
