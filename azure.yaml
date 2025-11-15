@@ -4,6 +4,15 @@ name: s2s-realtime-nbk
 metadata:
   template: s2s-realtime-nbk@0.0.1-beta
 
+services:
+  backend:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: Dockerfile
+      context: .
+
 infra:
   provider: bicep
   path: .
@@ -20,6 +29,3 @@ hooks:
       run: |
         echo "Post-provision hook not implemented for Linux/Mac yet"
         echo "Please run: python scrape_nbk.py manually"
-
-# No services to deploy - this is infrastructure only
-# Python app runs locally and connects to deployed APIM

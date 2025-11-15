@@ -60,24 +60,33 @@ module foundryModule './modules/foundry.bicep' = {
     }
   }
 
-resource apimService 'Microsoft.ApiManagement/service@2024-06-01-preview' existing = {
-  name: 'apim-${resourceSuffix}'
-  dependsOn: [
-    foundryModule
-  ]
+// 5. Container App Backend (WebSocket Proxy with NBK Knowledge)
+module containerAppModule './modules/containerapp.bicep' = {
+  name: 'containerAppModule'
+  params: {
+    suffix: resourceSuffix
+    azureOpenAIEndpoint: foundryModule.outputs.extendedAIServicesConfig[0].endpoint
+    azureOpenAIKey: foundryModule.outputs.extendedAIServicesConfig[0].key
+    deploymentName: 'gpt-realtime'
+    apiVersion: '2024-10-01-preview'
+  }
 }
 
-// 5. APIM OpenAI-RT Websocket API
+resource apimService 'Microsoft.ApiManagement/service@2024-06-01-preview' existing = {
+  name: 'apim-${resourceSuffix}'
+}
+
+// 6. APIM OpenAI-RT Websocket API (routes to Container App Backend)
 // https://learn.microsoft.com/azure/templates/microsoft.apimanagement/service/apis
 resource api 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   name: 'realtime-audio'
   parent: apimService
   properties: {
     apiType: 'websocket'
-    description: 'Inference API for Azure OpenAI Realtime'
+    description: 'Inference API for NBK Realtime (via backend proxy)'
     displayName: 'InferenceAPI'
     path: '${inferenceAPIPath}/openai/realtime'
-    serviceUrl: '${replace(foundryModule.outputs.extendedAIServicesConfig[0].endpoint, 'https:', 'wss:')}openai/realtime'
+    serviceUrl: 'wss://${containerAppModule.outputs.backendFqdn}/realtime'
     type: inferenceAPIType
     protocols: [
       'wss'
@@ -208,6 +217,8 @@ output APIM_SUBSCRIPTION_KEY string = apimModule.outputs.apimSubscriptions[0].ke
 output APIM_SUBSCRIPTION_NAME string = apimModule.outputs.apimSubscriptions[0].displayName
 output WEBSOCKET_ENDPOINT string = 'wss://${replace(apimModule.outputs.gatewayUrl, 'https://', '')}/${inferenceAPIPath}/openai/realtime'
 output API_VERSION string = '2024-10-01-preview'
-output FULL_WEBSOCKET_URL string = 'wss://${replace(apimModule.outputs.gatewayUrl, 'https://', '')}/${inferenceAPIPath}/openai/realtime?api-version=2024-10-01-preview'
+output FULL_WEBSOCKET_URL string = 'wss://${replace(apimModule.outputs.gatewayUrl, 'https://', '')}/${inferenceAPIPath}/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime'
 output RESOURCE_GROUP_NAME string = resourceGroup().name
 output DEPLOYMENT_REGION string = resourceGroup().location
+output BACKEND_URL string = containerAppModule.outputs.backendUrl
+output BACKEND_FQDN string = containerAppModule.outputs.backendFqdn
