@@ -88,32 +88,46 @@ Key outputs you'll need:
 
 After deployment, retrieve your WebSocket endpoint and API key:
 
+**Step 1: Get the APIM Gateway URL and Subscription Key**
+
 ```bash
-# Get all environment variables
+# Get all deployment outputs
 azd env get-values
 
-# Or get specific values
+# Or get specific values (PowerShell)
 azd env get-values | Select-String "APIM_GATEWAY_URL"
 azd env get-values | Select-String "APIM_SUBSCRIPTION_KEY"
-azd env get-values | Select-String "FULL_WEBSOCKET_URL"
+
+# For Linux/Mac (bash)
+azd env get-values | grep "APIM_GATEWAY_URL"
+azd env get-values | grep "APIM_SUBSCRIPTION_KEY"
 ```
 
-The complete WebSocket URL for frontend integration:
+**Example output**:
+```
+APIM_GATEWAY_URL="https://apim-abc123.azure-api.net"
+APIM_SUBSCRIPTION_KEY="c85b42ae7ec14a60b1eb8bd38d4b4116"
+```
 
+**Step 2: Build your complete WebSocket URL**
+
+Format:
 ```
 wss://<APIM_GATEWAY_URL>/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime&api-key=<APIM_SUBSCRIPTION_KEY>
 ```
 
-**Example output from `azd env get-values`**:
-```
-APIM_GATEWAY_URL="https://apim-abc123.azure-api.net"
-APIM_SUBSCRIPTION_KEY="c85b42ae7ec14a60b1eb8bd38d4b4116"
-FULL_WEBSOCKET_URL="wss://apim-abc123.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime"
-```
-
-**Your complete WebSocket URL**:
+**Example with values from above**:
 ```
 wss://apim-abc123.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime&api-key=c85b42ae7ec14a60b1eb8bd38d4b4116
+```
+
+**Quick method**: You can also get the pre-built URL:
+```bash
+azd env get-values | Select-String "FULL_WEBSOCKET_URL"
+# Output: FULL_WEBSOCKET_URL="wss://apim-abc123.azure-api.net/inference/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-realtime"
+
+# Then append the API key
+# Final URL: <FULL_WEBSOCKET_URL>&api-key=<APIM_SUBSCRIPTION_KEY>
 ```
 
 ## Testing the Deployment
