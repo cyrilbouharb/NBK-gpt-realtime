@@ -41,8 +41,6 @@ env/
 
 # Deployment files
 *.log
-deployment-config.txt
-nbk-frontend.html
 
 # Azure
 .azure/*

@@ -7,10 +7,10 @@ metadata:
 services:
   backend:
     project: .
-    language: python
     host: containerapp
+    language: python
     docker:
-      path: Dockerfile
+      path: ./Dockerfile
       context: .
 
 infra:

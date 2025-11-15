@@ -1,19 +1,23 @@
+# Use Python 3.11 slim image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Copy requirements
-COPY requirements.txt .
+# Copy backend code
+COPY backend/ /app/backend/
+
+# Copy NBK knowledge base
+COPY nbk_knowledge.json /app/nbk_knowledge.json
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
-# Copy application code
-COPY backend/ ./backend/
-COPY nbk_knowledge.json .
-
-# Expose port
+# Expose port 8000
 EXPOSE 8000
 
+# Set working directory to backend
+WORKDIR /app/backend
+
 # Run the application
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,26 +1,28 @@
 """
-NBK Realtime WebSocket Proxy Backend
-Injects NBK knowledge base and system prompts into Azure OpenAI Realtime API
+NBK Banking Assistant - WebSocket Proxy Backend
+
+This backend:
+1. Loads NBK knowledge base from nbk_knowledge.json
+2. Proxies WebSocket connections between frontend and Azure OpenAI Realtime API
+3. Injects NBK knowledge into system prompt on session start
+4. Configures Echo voice and optimized VAD settings
+5. Handles Azure OpenAI authentication (frontend only needs APIM key)
 """
 
 import asyncio
 import json
 import os
-import logging
-from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, Query
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict, Any
 import websockets
-from dotenv import load_dotenv
-
-# Load environment
-load_dotenv()
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="NBK Realtime Proxy")
+app = FastAPI(title="NBK Realtime Backend")
 
 # CORS configuration
 app.add_middleware(
@@ -31,208 +33,194 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load NBK Knowledge Base
+# Azure OpenAI Configuration from environment
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME", "gpt-realtime")
+API_VERSION = os.getenv("INFERENCE_API_VERSION", "2024-10-01-preview")
+
+# NBK Knowledge Base
+NBK_KNOWLEDGE = []
+
 def load_nbk_knowledge():
-    """Load scraped NBK knowledge from JSON file."""
+    """Load NBK knowledge base from JSON file"""
+    global NBK_KNOWLEDGE
     try:
-        knowledge_file = os.path.join(os.path.dirname(__file__), "..", "nbk_knowledge.json")
-        with open(knowledge_file, 'r', encoding='utf-8') as f:
-            knowledge = json.load(f)
-        logger.info(f"Loaded {len(knowledge)} knowledge entries from NBK")
-        return knowledge
+        # Try loading from parent directory (where nbk_knowledge.json is)
+        with open("../nbk_knowledge.json", "r", encoding="utf-8") as f:
+            NBK_KNOWLEDGE = json.load(f)
+        logger.info(f"✅ Loaded {len(NBK_KNOWLEDGE)} NBK knowledge entries")
     except FileNotFoundError:
-        logger.warning("nbk_knowledge.json not found - running without knowledge base")
-        return []
-    except Exception as e:
-        logger.error(f"Error loading NBK knowledge: {e}")
-        return []
+        try:
+            # Try current directory (when running in container)
+            with open("nbk_knowledge.json", "r", encoding="utf-8") as f:
+                NBK_KNOWLEDGE = json.load(f)
+            logger.info(f"✅ Loaded {len(NBK_KNOWLEDGE)} NBK knowledge entries")
+        except FileNotFoundError:
+            logger.warning("⚠️ nbk_knowledge.json not found. Using empty knowledge base.")
+            NBK_KNOWLEDGE = []
 
-# Format knowledge for system prompt
-def format_knowledge_for_prompt(knowledge_base, max_chars=8000):
-    """Format knowledge base entries into a concise system prompt."""
-    if not knowledge_base:
-        return ""
-    
-    formatted = "\n\n=== NBK Knowledge Base ===\n"
-    total_chars = 0
-    
-    for item in knowledge_base:
-        title = item.get('title', 'N/A')
-        url = item.get('url', 'N/A')
-        content = item.get('content', '')
-        
-        # Truncate long content
-        if len(content) > 500:
-            content = content[:500] + "..."
-        
-        entry = f"\n[{title}]\nURL: {url}\nContent: {content}\n"
-        
-        if total_chars + len(entry) > max_chars:
-            break
-            
-        formatted += entry
-        total_chars += len(entry)
-    
-    formatted += "\n=== End Knowledge Base ===\n"
-    return formatted
-
-# Build system instructions
-def build_system_instructions(knowledge_base):
-    """Build comprehensive system instructions with NBK knowledge."""
-    
-    knowledge_text = format_knowledge_for_prompt(knowledge_base)
-    
-    instructions = f"""You are a helpful and professional assistant for National Bank of Kuwait (NBK).
+def build_system_instructions() -> str:
+    """Build system instructions with NBK knowledge"""
+    instructions = """You are a professional customer service representative for National Bank of Kuwait (NBK).
 
 Your role:
-- Answer questions about NBK products, services, and banking information
-- Provide accurate information based on the knowledge base below
-- Be concise, clear, and professional
-- Support both English and Arabic languages
-- If you don't know something, admit it and suggest contacting NBK directly
+- Provide accurate information about NBK products and services
+- Be courteous, professional, and helpful
+- Use the NBK knowledge base below to answer questions
+- If you don't know something, admit it and offer to connect them with a specialist
+- Speak naturally and conversationally
+- Keep responses concise but informative
 
-{knowledge_text}
-
-Guidelines:
-1. Always prioritize accuracy over assumptions
-2. Use the knowledge base to ground your responses
-3. Be helpful and conversational
-4. Keep responses brief (2-3 sentences when possible)
-5. If asked about services not in the knowledge base, suggest visiting nbk.com or calling NBK
+NBK Knowledge Base:
 """
+    
+    for idx, entry in enumerate(NBK_KNOWLEDGE, 1):
+        instructions += f"\n{idx}. {entry['title']}\n"
+        instructions += f"   URL: {entry['url']}\n"
+        # Truncate content to first 500 chars to keep prompt manageable
+        content_preview = entry['content'][:500] + "..." if len(entry['content']) > 500 else entry['content']
+        instructions += f"   {content_preview}\n"
     
     return instructions
 
-# Global knowledge base (loaded once at startup)
-NBK_KNOWLEDGE = load_nbk_knowledge()
-SYSTEM_INSTRUCTIONS = build_system_instructions(NBK_KNOWLEDGE)
-
-# Azure OpenAI Configuration
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("DEPLOYMENT_NAME", "gpt-realtime")
-AZURE_OPENAI_API_VERSION = os.getenv("INFERENCE_API_VERSION", "2024-10-01-preview")
-
-# Construct Azure OpenAI WebSocket URL
-AZURE_WSS_URL = f"{AZURE_OPENAI_ENDPOINT.replace('https:', 'wss:')}/openai/realtime?api-version={AZURE_OPENAI_API_VERSION}&deployment={AZURE_OPENAI_DEPLOYMENT}"
-
-logger.info(f"Azure OpenAI Endpoint: {AZURE_OPENAI_ENDPOINT}")
-logger.info(f"System Instructions Length: {len(SYSTEM_INSTRUCTIONS)} chars")
-logger.info(f"NBK Knowledge Entries: {len(NBK_KNOWLEDGE)}")
-
+# Load knowledge on startup
+load_nbk_knowledge()
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint"""
     return {
         "status": "healthy",
         "knowledge_entries": len(NBK_KNOWLEDGE),
-        "instructions_length": len(SYSTEM_INSTRUCTIONS)
+        "instructions_length": len(build_system_instructions())
     }
 
-
 @app.websocket("/realtime")
-async def websocket_proxy(
-    websocket: WebSocket,
-    api_version: str = Query("2024-10-01-preview"),
-    deployment: str = Query("gpt-realtime")
-):
+async def websocket_proxy(websocket: WebSocket):
     """
-    WebSocket proxy endpoint that:
-    1. Accepts client connections
-    2. Connects to Azure OpenAI Realtime API
-    3. Injects NBK knowledge and system prompt
-    4. Proxies messages bidirectionally
+    Proxy WebSocket connection between client and Azure OpenAI Realtime API
+    Injects NBK knowledge into system prompt
     """
-    
     await websocket.accept()
-    logger.info("Client connected to proxy")
+    logger.info("✅ Client connected")
     
-    # Connect to Azure OpenAI
-    azure_ws = None
+    # Build WebSocket URL for Azure OpenAI
+    ws_endpoint = AZURE_OPENAI_ENDPOINT.replace("https://", "wss://").replace("http://", "ws://")
+    azure_ws_url = f"{ws_endpoint}openai/realtime?api-version={API_VERSION}&deployment={DEPLOYMENT_NAME}"
+    
+    logger.info(f"🔗 Connecting to Azure OpenAI: {azure_ws_url}")
+    
     try:
-        # Build Azure OpenAI URL
-        azure_url = f"{AZURE_OPENAI_ENDPOINT.replace('https:', 'wss:')}/openai/realtime?api-version={api_version}&deployment={deployment}"
-        
-        logger.info(f"Connecting to Azure OpenAI: {azure_url}")
-        
-        # Connect with API key
-        azure_ws = await websockets.connect(
-            azure_url,
+        # Connect to Azure OpenAI Realtime API
+        async with websockets.connect(
+            azure_ws_url,
             extra_headers={
                 "api-key": AZURE_OPENAI_KEY
             }
-        )
-        
-        logger.info("Connected to Azure OpenAI")
-        
-        # Send initial session configuration with NBK knowledge
-        session_config = {
-            "type": "session.update",
-            "session": {
-                "modalities": ["audio", "text"],
-                "instructions": SYSTEM_INSTRUCTIONS,
-                "voice": "echo",  # Professional male voice
-                "input_audio_format": "pcm16",
-                "output_audio_format": "pcm16",
-                "input_audio_transcription": {
-                    "model": "whisper-1"
-                },
-                "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": 0.6,
-                    "prefix_padding_ms": 200,
-                    "silence_duration_ms": 700
+        ) as azure_ws:
+            logger.info("✅ Connected to Azure OpenAI Realtime API")
+            
+            # Send initial session configuration with NBK knowledge
+            session_config = {
+                "type": "session.update",
+                "session": {
+                    "modalities": ["text", "audio"],
+                    "instructions": build_system_instructions(),
+                    "voice": "echo",  # Professional male voice for banking
+                    "input_audio_format": "pcm16",
+                    "output_audio_format": "pcm16",
+                    "input_audio_transcription": {
+                        "model": "whisper-1"
+                    },
+                    "turn_detection": {
+                        "type": "server_vad",
+                        "threshold": 0.5,  # Lower threshold = more sensitive to speech
+                        "prefix_padding_ms": 300,  # Capture more audio before speech
+                        "silence_duration_ms": 500  # Shorter silence = faster detection
+                    },
+                    "temperature": 0.7,
+                    "max_response_output_tokens": 4096
                 }
             }
-        }
-        
-        await azure_ws.send(json.dumps(session_config))
-        logger.info("Sent session configuration with NBK knowledge to Azure OpenAI")
-        
-        # Bidirectional message proxy
-        async def client_to_azure():
-            """Forward messages from client to Azure OpenAI."""
-            try:
-                while True:
-                    message = await websocket.receive_text()
-                    await azure_ws.send(message)
-            except WebSocketDisconnect:
-                logger.info("Client disconnected")
-            except Exception as e:
-                logger.error(f"Error in client_to_azure: {e}")
-        
-        async def azure_to_client():
-            """Forward messages from Azure OpenAI to client."""
-            try:
-                while True:
-                    message = await azure_ws.recv()
-                    await websocket.send_text(message)
-            except websockets.exceptions.ConnectionClosed:
-                logger.info("Azure OpenAI connection closed")
-            except Exception as e:
-                logger.error(f"Error in azure_to_client: {e}")
-        
-        # Run both directions concurrently
-        await asyncio.gather(
-            client_to_azure(),
-            azure_to_client()
-        )
-        
+            
+            logger.info(f"📤 Sending session config: {json.dumps(session_config, indent=2)}")
+            await azure_ws.send(json.dumps(session_config))
+            logger.info("✅ Sent session configuration with NBK knowledge")
+            
+            # Track if AI is currently responding
+            is_responding = False
+            current_response_id = None
+            
+            # Create bidirectional proxy with interruption support
+            async def forward_to_azure():
+                """Forward messages from client to Azure OpenAI"""
+                try:
+                    while True:
+                        message = await websocket.receive_text()
+                        # Just forward everything - let Azure handle VAD
+                        await azure_ws.send(message)
+                        
+                except WebSocketDisconnect:
+                    logger.info("Client disconnected")
+                except Exception as e:
+                    logger.error(f"Error forwarding to Azure: {e}")
+            
+            async def forward_to_client():
+                """Forward messages from Azure OpenAI to client with response tracking and interruption"""
+                nonlocal is_responding, current_response_id
+                try:
+                    async for message in azure_ws:
+                        data = json.loads(message)
+                        msg_type = data.get("type")
+                        
+                        # Handle interruption: Azure VAD detected new speech during response
+                        if msg_type == "input_audio_buffer.speech_started" and is_responding:
+                            logger.info("🛑 New speech detected during response - canceling")
+                            cancel_message = {
+                                "type": "response.cancel"
+                            }
+                            await azure_ws.send(json.dumps(cancel_message))
+                            is_responding = False
+                            current_response_id = None
+                        
+                        # Log important events
+                        if msg_type in ["response.created", "response.done", "response.audio.delta", "response.audio.done"]:
+                            if msg_type == "response.audio.delta":
+                                logger.info(f"🔊 Audio delta received (size: {len(data.get('delta', ''))} bytes)")
+                            else:
+                                logger.info(f"📨 {msg_type}: {json.dumps(data, indent=2)}")
+                        
+                        # Track when response starts
+                        if msg_type == "response.created":
+                            is_responding = True
+                            current_response_id = data.get("response", {}).get("id")
+                            logger.info(f"📢 Response started: {current_response_id}")
+                        
+                        # Track when response ends
+                        elif msg_type in ["response.done", "response.cancelled", "response.failed"]:
+                            is_responding = False
+                            logger.info(f"✅ Response ended: {msg_type}")
+                            current_response_id = None
+                        
+                        # Forward message to client
+                        await websocket.send_text(message)
+                        
+                except Exception as e:
+                    logger.error(f"Error forwarding to client: {e}")
+            
+            # Run both directions concurrently
+            await asyncio.gather(
+                forward_to_azure(),
+                forward_to_client(),
+                return_exceptions=True
+            )
+            
     except Exception as e:
-        logger.error(f"WebSocket proxy error: {e}")
-        await websocket.send_text(json.dumps({
-            "type": "error",
-            "error": {
-                "message": str(e)
-            }
-        }))
+        logger.error(f"❌ WebSocket proxy error: {e}")
+        await websocket.close(code=1011, reason=str(e))
     finally:
-        if azure_ws:
-            await azure_ws.close()
-        await websocket.close()
-        logger.info("WebSocket proxy closed")
-
+        logger.info("🔌 Connection closed")
 
 if __name__ == "__main__":
     import uvicorn

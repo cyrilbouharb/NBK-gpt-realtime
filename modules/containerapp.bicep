@@ -2,12 +2,16 @@
 
 param location string = resourceGroup().location
 param suffix string
-param containerImage string = 'nginx:latest'  // Placeholder, will be updated by azd
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'  // Default image, azd will update
 param azureOpenAIEndpoint string
 @secure()
 param azureOpenAIKey string
 param deploymentName string
 param apiVersion string
+param registryServer string
+param registryUsername string
+@secure()
+param registryPassword string
 
 // Container Apps Environment
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -24,6 +28,9 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: 'ca-nbk-backend-${suffix}'
   location: location
+  tags: {
+    'azd-service-name': 'backend'
+  }
   properties: {
     managedEnvironmentId: containerAppEnv.id
     configuration: {
@@ -33,10 +40,21 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'auto'
         allowInsecure: false
       }
+      registries: [
+        {
+          server: registryServer
+          username: registryUsername
+          passwordSecretRef: 'registry-password'
+        }
+      ]
       secrets: [
         {
           name: 'azure-openai-key'
           value: azureOpenAIKey
+        }
+        {
+          name: 'registry-password'
+          value: registryPassword
         }
       ]
     }
@@ -79,3 +97,4 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 
 output backendUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output backendFqdn string = containerApp.properties.configuration.ingress.fqdn
+output containerAppName string = containerApp.name

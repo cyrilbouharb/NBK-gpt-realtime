@@ -1,8 +1,8 @@
 <policies>
     <inbound>
         <base />
-        <!-- No authentication needed here - backend handles Azure OpenAI auth -->
-        <!-- APIM only validates subscription key from frontend -->
+        <!-- Backend handles Azure OpenAI authentication -->
+        <!-- APIM just validates subscription key and forwards -->
     </inbound>
     <backend>
         <base />

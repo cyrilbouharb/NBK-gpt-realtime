@@ -60,7 +60,15 @@ module foundryModule './modules/foundry.bicep' = {
     }
   }
 
-// 5. Container App Backend (WebSocket Proxy with NBK Knowledge)
+// 5. Container Registry
+module registryModule './modules/registry.bicep' = {
+  name: 'registryModule'
+  params: {
+    suffix: resourceSuffix
+  }
+}
+
+// 6. Container App Backend (WebSocket Proxy with NBK Knowledge)
 module containerAppModule './modules/containerapp.bicep' = {
   name: 'containerAppModule'
   params: {
@@ -69,14 +77,20 @@ module containerAppModule './modules/containerapp.bicep' = {
     azureOpenAIKey: foundryModule.outputs.extendedAIServicesConfig[0].key
     deploymentName: 'gpt-realtime'
     apiVersion: '2024-10-01-preview'
+    registryServer: registryModule.outputs.loginServer
+    registryUsername: registryModule.outputs.name
+    registryPassword: registryModule.outputs.adminPassword
   }
 }
 
 resource apimService 'Microsoft.ApiManagement/service@2024-06-01-preview' existing = {
   name: 'apim-${resourceSuffix}'
+  dependsOn: [
+    foundryModule
+  ]
 }
 
-// 6. APIM OpenAI-RT Websocket API (routes to Container App Backend)
+// 7. APIM OpenAI-RT Websocket API (routes to Container App Backend)
 // https://learn.microsoft.com/azure/templates/microsoft.apimanagement/service/apis
 resource api 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   name: 'realtime-audio'
@@ -222,3 +236,8 @@ output RESOURCE_GROUP_NAME string = resourceGroup().name
 output DEPLOYMENT_REGION string = resourceGroup().location
 output BACKEND_URL string = containerAppModule.outputs.backendUrl
 output BACKEND_FQDN string = containerAppModule.outputs.backendFqdn
+output SERVICE_BACKEND_NAME string = containerAppModule.outputs.containerAppName
+output AZURE_CONTAINER_APP_NAME string = containerAppModule.outputs.containerAppName
+output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = 'cae-${resourceSuffix}'
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = registryModule.outputs.endpoint
+output AZURE_CONTAINER_REGISTRY_NAME string = registryModule.outputs.name
